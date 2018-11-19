@@ -1,0 +1,5 @@
+# DWA-171 C1,
+TargetVendor=0x2001
+TargetProduct=0x331d
+StandardEject=1
+DriverModule=8821cu
