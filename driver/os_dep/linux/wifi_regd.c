@@ -308,7 +308,7 @@ static void _rtw_reg_apply_radar_flags(struct wiphy *wiphy)
 
 static void _rtw_reg_apply_flags(struct wiphy *wiphy)
 {
-#if 1				/* by channel plan */
+#ifndef CONFIG_DISABLE_REGD_C				/* by channel plan *///jimmy
 	_adapter *padapter = wiphy_to_adapter(wiphy);
 	struct rf_ctl_t *rfctl = adapter_to_rfctl(padapter);
 	u8 channel_plan = rfctl->ChannelPlan;
@@ -361,11 +361,11 @@ static void _rtw_reg_apply_flags(struct wiphy *wiphy)
 	struct ieee80211_supported_band *sband;
 	struct ieee80211_channel *ch;
 	unsigned int i, j;
-	u16 channels[37] = {
-		1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 36, 40, 44, 48, 52, 56,
-		60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140,
-		149, 153,
-		157, 161, 165
+	u16 channels[40] = {
+		1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 
+		36, 40, 44, 48, 52, 56, 60, 64, 
+		100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144,
+		149, 153, 157, 161, 165, 169, 173
 	};
 	u16 channel;
 	u32 freq;

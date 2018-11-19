@@ -312,6 +312,8 @@
 
 #define CONFIG_ATTEMPT_TO_FIX_AP_BEACON_ERROR
 
+//jimmy, support all 2.4G/5G channel
+#define CONFIG_DISABLE_REGD_C
 /*
  * Debug Related Config
  */
