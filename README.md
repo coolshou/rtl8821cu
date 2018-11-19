@@ -38,3 +38,5 @@ Drivers for the rtl8821cu chipset for wireless adapters (D-Link DWA-171 rev C1)
 # UEFI Secure Boot - (boot the kernel with signed)
  if insmod the module it shows error of "Required key not available", you are using a kernel which is signed
  Only signed module can be use in this condition.
+ 
+ ![sign needed error](pics/need-sign.png)
