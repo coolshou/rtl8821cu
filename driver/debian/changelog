@@ -1,3 +1,9 @@
+rtl8821cu (5.2.15.2-27778.20190115) unstable; urgency=medium
+
+  * fix get_monotonic_boottime when kernel >= 4.15
+
+ -- jimmy <jimmy@jimmy-alpha>  Tue, 15 Jan 2019 11:43:08 +0800
+
 rtl8821cu (5.2.15.2-27778.20180515) unstable; urgency=medium
 
   * Initial release
