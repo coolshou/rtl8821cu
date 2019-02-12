@@ -1,3 +1,9 @@
+rtl8821cu (5.2.15.2-27778.20190213) UNRELEASED; urgency=medium
+
+  * fix Linux 5.0: access_ok() drops 'type' parameter
+
+ -- coolshou <coolshou@coolshou-desktop>  Wed, 13 Feb 2019 01:44:22 +0800
+
 rtl8821cu (5.2.15.2-27778.20190115) unstable; urgency=medium
 
   * fix get_monotonic_boottime when kernel >= 4.15
