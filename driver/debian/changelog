@@ -1,4 +1,10 @@
-rtl8821cu (5.2.15.2-27778.20190213) UNRELEASED; urgency=medium
+rtl8821cu (5.2.15.2-27778.20190605) unstable; urgency=medium
+
+  * Fix compilation for Linux 5.1, replace get_ds() with KERNEL_DS
+
+ -- jimmy <jimmy@jimmy-alpha>  Wed, 05 Jun 2019 13:25:28 +0800
+
+rtl8821cu (5.2.15.2-27778.20190213) unstable; urgency=medium
 
   * fix Linux 5.0: access_ok() drops 'type' parameter
 
