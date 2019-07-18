@@ -41,18 +41,28 @@ Drivers for the rtl8821cu chipset for wireless adapters (D-Link DWA-171 rev C1)
 
  ![sign needed error](pics/need-sign.png)
 
-    Create signing keys
+1. Create signing keys
+
 ```
     openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 36500 -subj "/CN=Descriptive name/"
 ```
-    Sign the module
+2. Sign the module
+
 ```
     sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 ./MOK.priv ./MOK.der /path/to/module
 ```
-    Register the keys to Secure Boot
+3. Register the keys to Secure Boot
+
 ```
     sudo mokutil --import MOK.der
 ```
-    Supply a password for later use after reboot
-    Reboot and follow instructions to Enroll MOK (Machine Owner Key).
-    Here's a sample with pictures. The system will reboot one more time.
+​		Supply a password for later use after reboot
+
+4. Reboot and follow instructions to Enroll MOK (Machine Owner Key).
+   Here's a sample with pictures. The system will reboot one more time.
+5. Confirm the key is enrolled
+
+```
+mokutil --test-key MOK.der
+```
+
