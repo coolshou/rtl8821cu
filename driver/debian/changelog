@@ -1,6 +1,10 @@
-rtl8821cu (5.8.1-34171) UNRELEASED; urgency=medium
+rtl8821cu (5.8.1-34171.20191111) unstable; urgency=medium
 
   * import 5.8.1_34171.20190628_COEX20190509-4141
+  * fix crash on kernel 5.3
+  * enable monitor mode
+  * fix compile on kernel 5.2
+  * enable full channel support
 
  -- jimmy <jimmy@jimmy-alpha>  Mon, 11 Nov 2019 10:11:43 +0800
 
