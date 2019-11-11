@@ -13,7 +13,7 @@ Drivers for the rtl8821cu chipset for wireless adapters (D-Link DWA-171 rev C1)
 ```
 ### test the driver (require cfg80211 loaded in system)
 ```
-> insmod 8821cu.ko
+> sudo insmod 8821cu.ko
 ```
 ### install driver
 ```
@@ -21,13 +21,13 @@ Drivers for the rtl8821cu chipset for wireless adapters (D-Link DWA-171 rev C1)
 ```
 ## auto switch from DISK mode to NIC mode
 ### requirement (test with ubuntu 18.04):
-    1. usb-modeswitch usb-modeswitch-data
+    1. install usb-modeswitch usb-modeswitch-data
 ```
-    > apt install usb-modeswitch usb-modeswitch-data
+    > sudo apt install usb-modeswitch usb-modeswitch-data
 ```
-    2. udev
+    2. install udev
 ```
-    > apt install udev
+    > sudo apt install udev
 ```
 
 ### install usb-modeswitch setting files
