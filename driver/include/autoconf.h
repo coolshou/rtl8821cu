@@ -298,6 +298,9 @@
 /* #define	CONFIG_TX_EARLY_MODE */
 #endif
 
+//jimmy, support all 2.4G/5G channel
+#define CONFIG_DISABLE_REGD_C
+
 /*
  * Debug Related Config
  */
