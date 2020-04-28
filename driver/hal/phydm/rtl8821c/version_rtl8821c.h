@@ -29,6 +29,6 @@
   You do not need to fill up the version.h anymore,
   only the maintenance supervisor fills it before formal release.
 */
-#define	RELEASE_DATE_8821C		20190305
+#define	RELEASE_DATE_8821C		20191008
 #define	COMMIT_BY_8821C			"Coiln"
-#define	RELEASE_VERSION_8821C	54
+#define	RELEASE_VERSION_8821C	57

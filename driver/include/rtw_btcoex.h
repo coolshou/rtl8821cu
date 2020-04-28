@@ -373,7 +373,6 @@ void rtw_btcoex_HAL_Initialize(PADAPTER padapter, u8 bWifiOnly);
 void rtw_btcoex_IpsNotify(PADAPTER, u8 type);
 void rtw_btcoex_LpsNotify(PADAPTER, u8 type);
 void rtw_btcoex_ScanNotify(PADAPTER, u8 type);
-void rtw_btcoex_ConnectNotify(PADAPTER, u8 action);
 void rtw_btcoex_MediaStatusNotify(PADAPTER, u8 mediaStatus);
 void rtw_btcoex_SpecialPacketNotify(PADAPTER, u8 pktType);
 void rtw_btcoex_IQKNotify(PADAPTER padapter, u8 state);
@@ -457,4 +456,5 @@ u8 rtw_btcoex_LPS_Leave(PADAPTER padapter);
 #endif /* CONFIG_BT_COEXIST */
 
 void rtw_btcoex_set_ant_info(PADAPTER padapter);
+void rtw_btcoex_connect_notify(PADAPTER, u8 join_type);
 

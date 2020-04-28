@@ -2276,14 +2276,16 @@ static void mpt_convert_phydm_txinfo_for_jaguar3(
 #endif
 
 /* for HW TX mode */
-void mpt_ProSetPMacTx(PADAPTER	Adapter)
+u8 mpt_ProSetPMacTx(PADAPTER	Adapter)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(Adapter);
 	PMPT_CONTEXT	pMptCtx		=	&(Adapter->mppriv.mpt_ctx);
 	struct mp_priv *pmppriv = &Adapter->mppriv;
+	struct hal_spec_t *hal_spec = GET_HAL_SPEC(Adapter);
 	RT_PMAC_TX_INFO	PMacTxInfo	=	pMptCtx->PMacTxInfo;
-	u32			u4bTmp;
 	struct dm_struct *p_dm_odm;
+	u32			u4bTmp;
+	u8 status = _TRUE;
 
 	p_dm_odm = &pHalData->odmpriv;
 
@@ -2298,6 +2300,7 @@ void mpt_ProSetPMacTx(PADAPTER	Adapter)
 	PRINT_DATA("Src Address", Adapter->mac_addr, ETH_ALEN);
 	PRINT_DATA("Dest Address", PMacTxInfo.MacAddress, ETH_ALEN);
 #endif
+
 	if (pmppriv->pktInterval != 0)
 		PMacTxInfo.PacketPeriod = pmppriv->pktInterval;
 
@@ -2308,6 +2311,24 @@ void mpt_ProSetPMacTx(PADAPTER	Adapter)
 	RTW_INFO("TXSC %d BandWidth %d PacketPeriod %d PacketCount %d PacketLength %d PacketPattern %d\n", PMacTxInfo.TX_SC, PMacTxInfo.BandWidth, PMacTxInfo.PacketPeriod, PMacTxInfo.PacketCount,
 		 PMacTxInfo.PacketLength, PMacTxInfo.PacketPattern);
 
+	if (hal_spec->tx_nss_num < 2 && MPT_IS_2SS_RATE(PMacTxInfo.TX_RATE))
+		return _FALSE;
+	if (hal_spec->tx_nss_num < 3 && MPT_IS_3SS_RATE(PMacTxInfo.TX_RATE))
+		return _FALSE;
+	if (hal_spec->tx_nss_num < 4 && MPT_IS_4SS_RATE(PMacTxInfo.TX_RATE))
+		return _FALSE;
+	if (!is_supported_vht(Adapter->registrypriv.wireless_mode) && MPT_IS_VHT_RATE(PMacTxInfo.TX_RATE))
+		return _FALSE;
+	if (!is_supported_ht(Adapter->registrypriv.wireless_mode) && MPT_IS_HT_RATE(PMacTxInfo.TX_RATE))
+		return _FALSE;
+
+	if (PMacTxInfo.BandWidth == 1 && hal_chk_bw_cap(Adapter, BW_CAP_40M))
+		PMacTxInfo.BandWidth = CHANNEL_WIDTH_40;
+	else if (PMacTxInfo.BandWidth == 2 && hal_chk_bw_cap(Adapter, BW_CAP_80M))
+		PMacTxInfo.BandWidth = CHANNEL_WIDTH_80;
+	else
+		PMacTxInfo.BandWidth = CHANNEL_WIDTH_20;
+
 	if (IS_HARDWARE_TYPE_JAGUAR3(Adapter)) {
 #ifdef PHYDM_PMAC_TX_SETTING_SUPPORT
 		struct phydm_pmac_info phydm_mactxinfo;
@@ -2315,7 +2336,7 @@ void mpt_ProSetPMacTx(PADAPTER	Adapter)
 		mpt_convert_phydm_txinfo_for_jaguar3(PMacTxInfo, &phydm_mactxinfo);
 		phydm_set_pmac_tx(p_dm_odm, &phydm_mactxinfo, pMptCtx->mpt_rf_path);
 #endif
-		return;
+		return status;
 	}
 
 	if (PMacTxInfo.bEnPMacTx == FALSE) {
@@ -2342,7 +2363,7 @@ void mpt_ProSetPMacTx(PADAPTER	Adapter)
 			mpt_SetSingleTone_8814A(Adapter, FALSE, TRUE);
 		}
 		pMptCtx->HWTxmode = TEST_NONE;
-		return;
+		return status;
 	}
 
     	pMptCtx->mpt_rate_index = PMacTxInfo.TX_RATE;
@@ -2506,6 +2527,7 @@ void mpt_ProSetPMacTx(PADAPTER	Adapter)
 	if (PMacTxInfo.Mode == OFDM_Single_Tone_TX)
 		mpt_SetSingleTone_8814A(Adapter, TRUE, TRUE);
 
+	return status;
 }
 
 #endif

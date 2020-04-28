@@ -1438,7 +1438,7 @@ void phydm_get_set_thermal_trim_offset_8812f(void *dm_void)
 	if (power_trim_info->flag & KFREE_FLAG_THERMAL_K_ON)
 		RF_DBG(dm, DBG_RF_MP, "[kfree] 8812f thermalA:%d thermalB:%d\n",
 			thermal[RF_PATH_A],
-			thermal[RF_PATH_B]);	
+			thermal[RF_PATH_B]);
 }
 
 void phydm_set_power_trim_offset_8812f(void *dm_void)
@@ -2255,6 +2255,117 @@ void phydm_get_set_lna_offset_8197g(void *dm_void)
 	}
 }
 
+void phydm_get_thermal_trim_offset_8710c(void *dm_void)
+{
+	struct dm_struct *dm = (struct dm_struct *)dm_void;
+	struct odm_power_trim_data *power_trim_info = &dm->power_trim_data;
+
+	u8 pg_therm = 0;
+
+	odm_efuse_one_byte_read(dm, PPG_THERMAL_OFFSET_10C, &pg_therm, false);
+	RF_DBG(dm, DBG_RF_MP, "[kfree] 8710c Efuse thermal:0x%x\n", pg_therm);
+
+	if (pg_therm != 0xff) {
+		pg_therm = pg_therm & 0x1f;
+		if ((pg_therm & BIT(0)) == 0)
+			power_trim_info->thermal = (-1 * (pg_therm >> 1));
+		else
+			power_trim_info->thermal = (pg_therm >> 1);
+
+		power_trim_info->flag |= KFREE_FLAG_THERMAL_K_ON;
+	}
+
+	RF_DBG(dm, DBG_RF_MP, "[kfree] 8710c thermal trim flag:0x%02x\n",
+	       power_trim_info->flag);
+
+	if (power_trim_info->flag & KFREE_FLAG_THERMAL_K_ON)
+		RF_DBG(dm, DBG_RF_MP, "[kfree] 8710c thermal:%d\n",
+		       power_trim_info->thermal);
+}
+
+void phydm_set_power_trim_offset_8710c(void *dm_void)
+{
+	struct dm_struct *dm = (struct dm_struct *)dm_void;
+	struct odm_power_trim_data *power_trim_info = &dm->power_trim_data;
+
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0xef, BIT(18), 1);
+
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0x33, RFREGOFFSETMASK, 0);
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0x3f, 0x3f,
+		power_trim_info->bb_gain[0][RF_PATH_A]);
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0x33, RFREGOFFSETMASK, 1);
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0x3f, 0x3f,
+		power_trim_info->bb_gain[1][RF_PATH_A]);
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0x33, RFREGOFFSETMASK, 2);
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0x3f, 0x3f, 
+		power_trim_info->bb_gain[2][RF_PATH_A]);
+
+	odm_set_rf_reg(dm, RF_PATH_A, RF_0xef, BIT(18), 0);
+}
+
+void phydm_get_set_power_trim_offset_8710c(void *dm_void)
+{
+	struct dm_struct *dm = (struct dm_struct *)dm_void;
+	struct odm_power_trim_data *power_trim_info = &dm->power_trim_data;
+
+	u8 pg_power = 0, i, j;
+
+	odm_efuse_one_byte_read(dm, PPG_2GL_TX_10C, &pg_power, false);
+
+	if (pg_power != 0xff) {
+		power_trim_info->bb_gain[0][RF_PATH_A] = pg_power & 0xf;
+
+		odm_efuse_one_byte_read(dm, PPG_2GM_TX_10C, &pg_power, false);
+		power_trim_info->bb_gain[1][RF_PATH_A] = pg_power & 0xf;
+
+		odm_efuse_one_byte_read(dm, PPG_2GH_TX_10C, &pg_power, false);
+		power_trim_info->bb_gain[2][RF_PATH_A] = pg_power & 0xf;
+
+		phydm_set_power_trim_offset_8710c(dm);
+
+		power_trim_info->flag =
+			power_trim_info->flag | KFREE_FLAG_ON | KFREE_FLAG_ON_2G;
+	}
+
+	RF_DBG(dm, DBG_RF_MP, "[kfree] 8710c power trim flag:0x%02x\n",
+	       power_trim_info->flag);
+
+	if (power_trim_info->flag & KFREE_FLAG_ON) {
+		for (i = 0; i < KFREE_BAND_NUM; i++) {
+			for (j = 0; j < MAX_RF_PATH; j++) {
+				RF_DBG(dm, DBG_RF_MP,
+				       "[kfree] 8710c pwr_trim->bb_gain[%d][%d]=0x%X\n",
+				       i, j, power_trim_info->bb_gain[i][j]);
+			}
+		}
+	}
+}
+
+void phydm_get_set_pa_bias_offset_8710c(void *dm_void)
+{
+	struct dm_struct *dm = (struct dm_struct *)dm_void;
+	struct odm_power_trim_data *power_trim_info = &dm->power_trim_data;
+
+	u8 pg_pa_bias = 0xff;
+	u8 tx_pa_bias = 0;
+
+	odm_efuse_one_byte_read(dm, PPG_PABIAS_10C, &pg_pa_bias, false);
+
+	if (pg_pa_bias != 0xff) {
+		tx_pa_bias = pg_pa_bias & 0xf;
+
+		RF_DBG(dm, DBG_RF_MP,
+		       "[kfree] 8710c PathA_pa_bias:0x%x\n", tx_pa_bias);
+
+		odm_set_rf_reg(dm, RF_PATH_A, 0x60, 0x0000f000, tx_pa_bias);
+
+		power_trim_info->pa_bias_flag |= PA_BIAS_FLAG_ON;
+	} else {
+		RF_DBG(dm, DBG_RF_MP, "[kfree] 8710c tx pa bias no pg\n");
+	}
+}
+
+
 s8 phydm_get_tssi_trim_de(void *dm_void, u8 path)
 {
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
@@ -2306,6 +2417,12 @@ void phydm_do_new_kfree(void *dm_void)
 		phydm_get_set_pa_bias_offset_8197g(dm);
 		/*phydm_get_tssi_trim_offset_8197g(dm);*/
 		/*phydm_get_set_lna_offset_8197g(dm);*/
+	}
+
+	if (dm->support_ic_type & ODM_RTL8710C) {
+		phydm_get_thermal_trim_offset_8710c(dm);
+		phydm_get_set_power_trim_offset_8710c(dm);
+		phydm_get_set_pa_bias_offset_8710c(dm);
 	}
 }
 

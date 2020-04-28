@@ -1786,10 +1786,7 @@ chbw_decision:
 		if (!(ifbmp_ch_changed & BIT(i)) || !pdvobj->padapters[i])
 			continue;
 
-		/* pure AP is not needed*/
-		if (MLME_IS_GO(pdvobj->padapters[i])
-			|| MLME_IS_MESH(pdvobj->padapters[i])
-		) {
+		{
 			u8 ht_option = 0;
 
 			#ifdef CONFIG_80211N_HT
@@ -1800,7 +1797,7 @@ chbw_decision:
 				, pdvobj->padapters[i]->mlmeextpriv.cur_channel
 				, pdvobj->padapters[i]->mlmeextpriv.cur_bwmode
 				, pdvobj->padapters[i]->mlmeextpriv.cur_ch_offset
-				, ht_option);
+				, ht_option, 0);
 		}
 	}
 #endif /* defined(CONFIG_IOCTL_CFG80211) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)) */
@@ -2053,6 +2050,7 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 			psecuritypriv->wpa2_group_cipher = group_cipher;
 			psecuritypriv->wpa2_pairwise_cipher = pairwise_cipher;
 
+#ifdef CONFIG_IOCTL_CFG80211
 			/*
 			Kernel < v5.1, the auth_type set as NL80211_AUTHTYPE_AUTOMATIC 
 			in cfg80211_rtw_start_ap().
@@ -2061,6 +2059,7 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 			*/
 			if (CHECK_BIT(WLAN_AKM_TYPE_SAE, akm))
 				psecuritypriv->auth_type = NL80211_AUTHTYPE_SAE;
+#endif
 #if 0
 			switch (group_cipher) {
 			case WPA_CIPHER_NONE:
@@ -3830,11 +3829,13 @@ u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reaso
 	_enter_critical_bh(&psta->lock, &irqL);
 	psta->state &= ~(_FW_LINKED | WIFI_UNDER_KEY_HANDSHAKE);
 
+#ifdef CONFIG_IOCTL_CFG80211
 	if ((psta->auth_len != 0) && (psta->pauth_frame != NULL)) {
 		rtw_mfree(psta->pauth_frame, psta->auth_len);
 		psta->pauth_frame = NULL;
 		psta->auth_len = 0;
 	}
+#endif /* CONFIG_IOCTL_CFG80211 */
 	_exit_critical_bh(&psta->lock, &irqL);
 
 	if (!MLME_IS_MESH(padapter)) {
@@ -5222,6 +5223,7 @@ u16 rtw_ap_parse_sta_security_ie(_adapter *adapter, struct sta_info *sta, struct
 	else if (sec->mfp_opt >= MFP_OPTIONAL && mfp_opt >= MFP_OPTIONAL)
 		sta->flags |= WLAN_STA_MFP;
 
+#ifdef CONFIG_IOCTL_CFG80211
 	if (MLME_IS_AP(adapter) &&
 		(sec->auth_type == NL80211_AUTHTYPE_SAE) &&
 		(CHECK_BIT(WLAN_AKM_TYPE_SAE, sta->akm_suite_type)) &&
@@ -5234,6 +5236,7 @@ u16 rtw_ap_parse_sta_security_ie(_adapter *adapter, struct sta_info *sta, struct
 			RTW_INFO("SAE: PMKSA cache entry found\n");
 		}
 	}
+#endif
 
 	if (status != _STATS_SUCCESSFUL_)
 		goto exit;

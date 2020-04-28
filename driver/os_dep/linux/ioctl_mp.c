@@ -71,8 +71,6 @@ int rtw_mp_write_reg(struct net_device *dev,
 	_rtw_memcpy(buf, pch, pnext-pch);
 	ret = kstrtoul(buf, 16, &addr);*/
 	ret = sscanf(pch, "%x", &addr);
-	if (addr > 0x3FFF)
-		return -EINVAL;
 
 	pch = pnext + 1;
 	pnext = strpbrk(pch, " ,.-");
@@ -420,9 +418,12 @@ int rtw_mp_rate(struct net_device *dev,
 		struct iw_point *wrqu, char *extra)
 {
 	u32 rate = MPT_RATE_1M;
+	u8 err = 0;
 	u8		input[wrqu->length + 1];
 	PADAPTER padapter = rtw_netdev_priv(dev);
 	PMPT_CONTEXT		pMptCtx = &(padapter->mppriv.mpt_ctx);
+	struct hal_spec_t *hal_spec = GET_HAL_SPEC(padapter);
+	struct	mp_priv	*pmppriv = &padapter->mppriv;
 
 	_rtw_memset(input, 0, sizeof(input));
 	if (copy_from_user(input, wrqu->pointer, wrqu->length))
@@ -430,11 +431,12 @@ int rtw_mp_rate(struct net_device *dev,
 
 	input[wrqu->length] = '\0';
 	rate = rtw_mpRateParseFunc(padapter, input);
-	padapter->mppriv.rateidx = rate;
+	pmppriv->rateidx = rate;
 
 	if (rate == 0 && strcmp(input, "1M") != 0) {
 		rate = rtw_atoi(input);
-		padapter->mppriv.rateidx = MRateToHwRate(rate);
+		if (rate <= MGN_VHT4SS_MCS9)
+			pmppriv->rateidx = MRateToHwRate(rate);
 		/*if (rate <= 0x7f)
 			rate = wifirate2_ratetbl_inx((u8)rate);
 		else if (rate < 0xC8)
@@ -447,21 +449,37 @@ int rtw_mp_rate(struct net_device *dev,
 		rate =(rate - MPT_RATE_VHT1SS_MCS0);
 		*/
 	}
+
 	_rtw_memset(extra, 0, wrqu->length);
 
-	sprintf(extra, "Set data rate to %s index %d" , input, padapter->mppriv.rateidx);
-	RTW_INFO("%s: %s rate index=%d\n", __func__, input, padapter->mppriv.rateidx);
-
-	if (padapter->mppriv.rateidx >= DESC_RATEVHTSS4MCS9)
+	if (pmppriv->rateidx > DESC_RATEVHTSS4MCS9) {
+		sprintf(extra, "Set %s Error" , input);
 		return -EINVAL;
+	}
 
-	pMptCtx->mpt_rate_index = HwRateToMPTRate(padapter->mppriv.rateidx);
-	SetDataRate(padapter);
+	if (hal_spec->tx_nss_num < 2 && MPT_IS_2SS_RATE(HwRateToMPTRate(pmppriv->rateidx)))
+		err = 1;
+	if (hal_spec->tx_nss_num < 3 && MPT_IS_3SS_RATE(HwRateToMPTRate(pmppriv->rateidx)))
+		err = 1;
+	if (hal_spec->tx_nss_num < 4 && MPT_IS_4SS_RATE(HwRateToMPTRate(pmppriv->rateidx)))
+		err = 1;
+	if (!is_supported_vht(padapter->registrypriv.wireless_mode) && MPT_IS_VHT_RATE(HwRateToMPTRate(pmppriv->rateidx)))
+		err = 1;
+	if (!is_supported_ht(padapter->registrypriv.wireless_mode) && MPT_IS_HT_RATE(HwRateToMPTRate(pmppriv->rateidx)))
+		err = 1;
 
+	if (err == 1) {
+		sprintf(extra, "Set data rate to %s Error" , input);
+		pmppriv->rateidx = 0;
+	} else {
+		sprintf(extra, "Set data rate to %s index %d" , input, pmppriv->rateidx);
+		RTW_INFO("%s: %s rate index=%d\n", __func__, input, pmppriv->rateidx);
+		pMptCtx->mpt_rate_index = HwRateToMPTRate(pmppriv->rateidx);
+		SetDataRate(padapter);
+	}
 	wrqu->length = strlen(extra);
-	return 0;
+	return err;
 }
-
 
 int rtw_mp_channel(struct net_device *dev,
 		   struct iw_request_info *info,
@@ -2320,8 +2338,10 @@ int rtw_mp_hwtx(struct net_device *dev,
 		RTW_INFO("Error !!! MP Tx Running, Please Set PMac Tx Mode Stop\n");
 	} else {
 		RTW_INFO("To set MAC Tx mode\n");
-		mpt_ProSetPMacTx(padapter);
-		sprintf(extra, "Set PMac Tx Mode OK\n");
+		if (mpt_ProSetPMacTx(padapter))
+			sprintf(extra, "Set PMac Tx Mode OK\n");
+		else
+			sprintf(extra, "Set PMac Tx Mode Error\n");
 	}
 	wrqu->data.length = strlen(extra);
 #endif

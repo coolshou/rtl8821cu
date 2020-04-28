@@ -1701,12 +1701,6 @@ u8 rtl8821c_sethwreg(PADAPTER adapter, u8 variable, u8 *val)
 
 	case HW_VAR_MLME_JOIN:
 		hw_var_set_mlme_join(adapter, *val);
-#ifdef CONFIG_BT_COEXIST
-		if (hal->EEPROMBluetoothCoexist)
-			rtw_btcoex_ConnectNotify(adapter, *val ? _FALSE : _TRUE);
-		else
-#endif /* CONFIG_BT_COEXIST */
-		rtw_btcoex_wifionly_connect_notify(adapter);
 		break;
 
 	case HW_VAR_SLOT_TIME:

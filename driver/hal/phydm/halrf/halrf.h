@@ -98,7 +98,7 @@
 #define IQK_VER_8703B "0x05"
 #define IQK_VER_8710B "0x01"
 #define IQK_VER_8723D "0x02"
-#define IQK_VER_8822B "0x30"
+#define IQK_VER_8822B "0x32"
 #define IQK_VER_8822C "0x0c"
 #define IQK_VER_8821C "0x23"
 #define IQK_VER_8198F "0x0a"
@@ -108,10 +108,10 @@
 #define IQK_VER_8197G "0x02"
 
 /*LCK version*/
-#define LCK_VER_8188E "0x01"
-#define LCK_VER_8192E "0x01"
+#define LCK_VER_8188E "0x02"
+#define LCK_VER_8192E "0x02"
 #define LCK_VER_8192F "0x01"
-#define LCK_VER_8723B "0x01"
+#define LCK_VER_8723B "0x02"
 #define LCK_VER_8812A "0x01"
 #define LCK_VER_8821A "0x01"
 #define LCK_VER_8814A "0x01"
@@ -551,8 +551,10 @@ struct _hal_rf_ {
 	u32 p_rate_index;
 	u8 pwt_type;
 	u32 rf_dbg_comp;
+#if !(DM_ODM_SUPPORT_TYPE & ODM_IOT)
 	struct _halrf_psd_data halrf_psd_data;
 	struct _halrf_tssi_data halrf_tssi_data;
+#endif
 	u8 power_track_type;
 	u8 pre_band_type;
 };

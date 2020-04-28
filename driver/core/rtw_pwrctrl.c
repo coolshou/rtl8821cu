@@ -1318,6 +1318,7 @@ void rtw_wow_lps_level_decide(_adapter *adapter, u8 wow_en)
 
 void LeaveAllPowerSaveModeDirect(PADAPTER Adapter)
 {
+	struct dvobj_priv *dvobj = adapter_to_dvobj(Adapter);
 	PADAPTER pri_padapter = GET_PRIMARY_ADAPTER(Adapter);
 	struct pwrctrl_priv *pwrpriv = adapter_to_pwrctl(Adapter);
 #ifdef CONFIG_LPS_LCLK
@@ -1326,6 +1327,7 @@ void LeaveAllPowerSaveModeDirect(PADAPTER Adapter)
 #endif /* CONFIG_DETECT_CPWM_BY_POLLING */
 	u8 rpwm;
 #endif
+	int i;
 
 	RTW_INFO("%s.....\n", __FUNCTION__);
 
@@ -1359,7 +1361,13 @@ void LeaveAllPowerSaveModeDirect(PADAPTER Adapter)
 #endif/*CONFIG_LPS_LCLK*/
 
 #ifdef CONFIG_P2P_PS
-		p2p_ps_wk_cmd(pri_padapter, P2P_PS_DISABLE, 0);
+		for (i = 0; i < dvobj->iface_nums; i++) {
+			_adapter *iface = dvobj->padapters[i];
+			struct wifidirect_info *pwdinfo = &(iface->wdinfo);
+
+			if (pwdinfo->p2p_ps_mode > P2P_PS_NONE)
+				p2p_ps_wk_cmd(iface, P2P_PS_DISABLE, 0);
+		}
 #endif /* CONFIG_P2P_PS */
 
 #ifdef CONFIG_LPS

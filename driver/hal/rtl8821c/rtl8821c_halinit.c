@@ -122,6 +122,10 @@ void rtl8821c_power_off(PADAPTER adapter)
 	rtw_hal_get_hwreg(adapter, HW_VAR_APFM_ON_MAC, &bMacPwrCtrlOn);
 	if (bMacPwrCtrlOn == _FALSE)
 		goto out;
+	
+	bMacPwrCtrlOn = _FALSE;
+	rtw_hal_set_hwreg(adapter, HW_VAR_APFM_ON_MAC, &bMacPwrCtrlOn);
+	GET_HAL_DATA(adapter)->bFWReady = _FALSE;
 
 	err = rtw_halmac_poweroff(d);
 	if (err) {
@@ -130,10 +134,7 @@ void rtl8821c_power_off(PADAPTER adapter)
 		goto out;
 	}
 
-	bMacPwrCtrlOn = _FALSE;
-	rtw_hal_set_hwreg(adapter, HW_VAR_APFM_ON_MAC, &bMacPwrCtrlOn);
-
-	GET_HAL_DATA(adapter)->bFWReady = _FALSE;
+	
 
 out:
 	return;
@@ -237,7 +238,7 @@ void rtl8821c_hal_init_misc(PADAPTER adapter)
 #endif /*CONFIG_XMIT_ACK*/
 
 	/*Disable BAR, suggested by Scott */
-	rtw_write32(adapter, REG_BAR_MODE_CTRL_8821C, 0x0201ffff);
+	rtw_write32(adapter, REG_BAR_MODE_CTRL_8821C, 0x01ffff|rtw_read8(adapter,REG_RA_TRY_RATE_AGG_LMT_8821C)<<24);
 	/*Disable secondary CCA 20M,40M?*/
 	rtw_write8(adapter, REG_MISC_CTRL_8821C, 0x03);
 

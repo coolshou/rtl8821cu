@@ -966,7 +966,7 @@ void halrf_cmn_info_set(void *dm_void, u32 cmn_info, u64 value)
 	case HALRF_CMNINFO_RATE_INDEX:
 		rf->p_rate_index = (u32)value;
 		break;
-/*#if (DM_ODM_SUPPORT_TYPE & ODM_WIN)*/
+#if !(DM_ODM_SUPPORT_TYPE & ODM_IOT)
 	case HALRF_CMNINFO_MP_PSD_POINT:
 		rf->halrf_psd_data.point = (u32)value;
 		break;
@@ -979,7 +979,7 @@ void halrf_cmn_info_set(void *dm_void, u32 cmn_info, u64 value)
 	case HALRF_CMNINFO_MP_PSD_AVERAGE:
 		rf->halrf_psd_data.average = (u32)value;
 		break;
-/*#endif*/
+#endif
 	default:
 		/* do nothing */
 		break;
@@ -3084,8 +3084,10 @@ void halrf_set_tssi_codeword(void *dm_void)
 {
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 	struct _hal_rf_ *rf = &dm->rf_table;
+#if !(DM_ODM_SUPPORT_TYPE & ODM_IOT)
 	struct _halrf_tssi_data *tssi = &rf->halrf_tssi_data;
-	
+#endif
+
 #if (RTL8814B_SUPPORT == 1)
 	if (dm->support_ic_type & ODM_RTL8814B)
 		halrf_set_tssi_codeword_8814b(dm, tssi->tssi_codeword);

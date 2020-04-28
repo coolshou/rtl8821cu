@@ -183,6 +183,8 @@ void sreset_restore_network_station(_adapter *padapter)
 
 		rtw_hal_rcr_set_chk_bssid(padapter, MLME_STA_CONNECTING);
 		rtw_hal_set_hwreg(padapter, HW_VAR_MLME_JOIN, (u8 *)(&join_type));
+
+		rtw_btcoex_connect_notify(padapter, join_type);
 	}
 
 	Set_MSR(padapter, (pmlmeinfo->state & 0x3));

@@ -4396,7 +4396,7 @@ void process_p2p_ps_ie(PADAPTER padapter, u8 *IEs, u32 IELength)
 	u32 ies_len;
 	u8 *p2p_ie;
 	u32	p2p_ielen = 0;
-	u8	noa_attr[MAX_P2P_IE_LEN] = { 0x00 };/* NoA length should be n*(13) + 2 */
+	u8 *noa_attr; /* NoA length should be n*(13) + 2 */
 	u32	attr_contentlen = 0;
 
 	struct wifidirect_info	*pwdinfo = &(padapter->wdinfo);
@@ -4423,7 +4423,8 @@ void process_p2p_ps_ie(PADAPTER padapter, u8 *IEs, u32 IELength)
 	while (p2p_ie) {
 		find_p2p = _TRUE;
 		/* Get Notice of Absence IE. */
-		if (rtw_get_p2p_attr_content(p2p_ie, p2p_ielen, P2P_ATTR_NOA, noa_attr, &attr_contentlen)) {
+		noa_attr = rtw_get_p2p_attr_content(p2p_ie, p2p_ielen, P2P_ATTR_NOA, NULL, &attr_contentlen);
+		if (noa_attr) {
 			find_p2p_ps = _TRUE;
 			noa_index = noa_attr[0];
 
@@ -4431,13 +4432,15 @@ void process_p2p_ps_ie(PADAPTER padapter, u8 *IEs, u32 IELength)
 			    (noa_index != pwdinfo->noa_index)) { /* if index change, driver should reconfigure related setting. */
 				pwdinfo->noa_index = noa_index;
 				pwdinfo->opp_ps = noa_attr[1] >> 7;
-				pwdinfo->ctwindow = noa_attr[1] & 0x7F;
-
+				if (pwdinfo->opp_ps != 1)
+					pwdinfo->ctwindow = 0;
+				else
+					pwdinfo->ctwindow = noa_attr[1] & 0x7F;
 				noa_offset = 2;
 				noa_num = 0;
 				/* NoA length should be n*(13) + 2 */
-				if (attr_contentlen > 2) {
-					while (noa_offset < attr_contentlen) {
+				if (attr_contentlen > 2 && (attr_contentlen - 2) % 13 == 0) {
+					while (noa_offset < attr_contentlen && noa_num < P2P_MAX_NOA_NUM) {
 						/* _rtw_memcpy(&wifidirect_info->noa_count[noa_num], &noa_attr[noa_offset], 1); */
 						pwdinfo->noa_count[noa_num] = noa_attr[noa_offset];
 						noa_offset += 1;
@@ -4496,17 +4499,19 @@ void p2p_ps_wk_hdl(_adapter *padapter, u8 p2p_ps_state)
 
 		rtw_hal_set_hwreg(padapter, HW_VAR_H2C_FW_P2P_PS_OFFLOAD, (u8 *)(&p2p_ps_state));
 
+		if (pwdinfo->opp_ps == 1) {
+			if (pwrpriv->smart_ps == 0) {
+				pwrpriv->smart_ps = 2;
+				if (pwrpriv->pwr_mode != PS_MODE_ACTIVE)
+					rtw_hal_set_hwreg(padapter, HW_VAR_H2C_FW_PWRMODE, (u8 *)(&(pwrpriv->pwr_mode)));
+			}
+		}
 		pwdinfo->noa_index = 0;
 		pwdinfo->ctwindow = 0;
 		pwdinfo->opp_ps = 0;
 		pwdinfo->noa_num = 0;
 		pwdinfo->p2p_ps_mode = P2P_PS_NONE;
-		if (pwrpriv->bFwCurrentInPSMode == _TRUE) {
-			if (pwrpriv->smart_ps == 0) {
-				pwrpriv->smart_ps = 2;
-				rtw_hal_set_hwreg(padapter, HW_VAR_H2C_FW_PWRMODE, (u8 *)(&(pwrpriv->pwr_mode)));
-			}
-		}
+
 		break;
 	case P2P_PS_ENABLE:
 		_enter_pwrlock(&adapter_to_pwrctl(padapter)->lock);
@@ -4535,7 +4540,8 @@ void p2p_ps_wk_hdl(_adapter *padapter, u8 p2p_ps_state)
 				if (pwrpriv->smart_ps != 0) {
 					pwrpriv->smart_ps = 0;
 					RTW_INFO("%s(): Enter CTW, change SmartPS\n", __FUNCTION__);
-					rtw_hal_set_hwreg(padapter, HW_VAR_H2C_FW_PWRMODE, (u8 *)(&(pwrpriv->pwr_mode)));
+					if (pwrpriv->pwr_mode != PS_MODE_ACTIVE)
+						rtw_hal_set_hwreg(padapter, HW_VAR_H2C_FW_PWRMODE, (u8 *)(&(pwrpriv->pwr_mode)));
 				}
 			}
 			rtw_hal_set_hwreg(padapter, HW_VAR_H2C_FW_P2P_PS_OFFLOAD, (u8 *)(&p2p_ps_state));

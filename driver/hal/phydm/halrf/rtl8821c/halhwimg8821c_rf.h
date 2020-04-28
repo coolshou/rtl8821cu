@@ -23,7 +23,7 @@
  *
  *****************************************************************************/
 
-/*Image2HeaderVersion: R3 1.5.5*/
+/*Image2HeaderVersion: R3 1.5.8*/
 #if (RTL8821C_SUPPORT == 1)
 #ifndef __INC_MP_RF_HW_IMG_8821C_H
 #define __INC_MP_RF_HW_IMG_8821C_H
@@ -34,6 +34,7 @@
  * #define CONFIG_8821C_TYPE0X20_DRV_DIS
  * #define CONFIG_8821C_TYPE0X28_DRV_DIS
  * #define CONFIG_8821C_FCCSAR_DRV_DIS
+ * #define CONFIG_8821C_ICSAR_DRV_DIS
  */
 
 #define CONFIG_8821C
@@ -54,6 +55,11 @@
 #define CONFIG_8821C_FCCSAR
 #ifdef CONFIG_8821C_FCCSAR_DRV_DIS
     #undef CONFIG_8821C_FCCSAR
+#endif
+
+#define CONFIG_8821C_ICSAR
+#ifdef CONFIG_8821C_ICSAR_DRV_DIS
+    #undef CONFIG_8821C_ICSAR
 #endif
 
 /******************************************************************************
@@ -109,6 +115,15 @@ u32 odm_get_version_mp_8821c_txpwr_lmt(void);
 void
 odm_read_and_config_mp_8821c_txpwr_lmt_fccsar(struct dm_struct *dm);
 u32 odm_get_version_mp_8821c_txpwr_lmt_fccsar(void);
+
+/******************************************************************************
+ *                           txpwr_lmt_icsar.TXT
+ ******************************************************************************/
+
+/* tc: Test Chip, mp: mp Chip*/
+void
+odm_read_and_config_mp_8821c_txpwr_lmt_icsar(struct dm_struct *dm);
+u32 odm_get_version_mp_8821c_txpwr_lmt_icsar(void);
 
 #endif
 #endif /* end of HWIMG_SUPPORT*/

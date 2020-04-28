@@ -12501,21 +12501,6 @@ u8 SetHwReg(_adapter *adapter, u8 variable, u8 *val)
 #ifndef CONFIG_HAS_HW_VAR_MLME_JOIN
 	case HW_VAR_MLME_JOIN:
 		hw_var_set_mlme_join(adapter, *val);
-		#ifdef CONFIG_BT_COEXIST
-		if (hal_data->EEPROMBluetoothCoexist == 1) {
-			switch (*val) {
-			case 0:
-				/* Notify coex. mechanism before join */
-				rtw_btcoex_ConnectNotify(adapter, _TRUE);
-				break;
-			case 1:
-			case 2:
-				/* Notify coex. mechanism after join, whether successful or failed */
-				rtw_btcoex_ConnectNotify(adapter, _FALSE);
-				break;
-			}
-		}
-		#endif /* CONFIG_BT_COEXIST */
 		break;
 #endif
 

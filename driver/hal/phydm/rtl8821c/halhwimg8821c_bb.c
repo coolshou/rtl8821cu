@@ -23,7 +23,7 @@
  *
  *****************************************************************************/
 
-/*Image2HeaderVersion: R3 1.5.5*/
+/*Image2HeaderVersion: R3 1.5.8*/
 #include "mp_precomp.h"
 #include "../phydm_precomp.h"
 
@@ -1362,7 +1362,7 @@ odm_read_and_config_mp_8821c_agc_tab(struct dm_struct *dm)
 u32
 odm_get_version_mp_8821c_agc_tab(void)
 {
-		return 54;
+		return 57;
 }
 
 /******************************************************************************
@@ -2213,7 +2213,7 @@ odm_read_and_config_mp_8821c_agc_tab_diff(struct dm_struct *dm,
 u32
 odm_get_version_mp_8821c_agc_tab_diff(void)
 {
-		return 54;
+		return 57;
 }
 
 /******************************************************************************
@@ -2272,7 +2272,11 @@ const u32 array_mp_8821c_phy_reg[] = {
 		0x8C0, 0xFFE04020,
 		0x8C4, 0x47C00000,
 		0x8C8, 0x00025165,
+	0x82000400,	0x00000000,	0x40000000,	0x00000000,
+		0x8CC, 0x08190492,
+	0xA0000000,	0x00000000,
 		0x8CC, 0x08188492,
+	0xB0000000,	0x00000000,
 		0x8D0, 0x0000B800,
 		0x8D4, 0x860308A0,
 		0x8D8, 0x290B5612,
@@ -3961,7 +3965,7 @@ odm_read_and_config_mp_8821c_phy_reg(struct dm_struct *dm)
 u32
 odm_get_version_mp_8821c_phy_reg(void)
 {
-		return 54;
+		return 57;
 }
 
 /******************************************************************************
@@ -4037,7 +4041,7 @@ odm_read_and_config_mp_8821c_phy_reg_mp(struct dm_struct *dm)
 u32
 odm_get_version_mp_8821c_phy_reg_mp(void)
 {
-		return 54;
+		return 57;
 }
 
 /******************************************************************************

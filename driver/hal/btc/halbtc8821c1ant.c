@@ -25,7 +25,7 @@ const char *const glbt_info_src_8821c_1ant[] = {
 	"BT Info[bt auto report]",
 };
 
-u32 glcoex_ver_date_8821c_1ant = 20190509;
+u32 glcoex_ver_date_8821c_1ant = 20191014;
 u32 glcoex_ver_8821c_1ant = 0x41;
 u32 glcoex_ver_btdesired_8821c_1ant = 0x39;
 
@@ -1666,7 +1666,7 @@ void halbtc8821c1ant_table(struct btc_coexist *btc, boolean force_exec, u8 type)
 					  select_table);
 		break;
 	case 4:
-		halbtc8821c1ant_set_table(btc, force_exec, 0x66555555,
+		halbtc8821c1ant_set_table(btc, force_exec, 0x65555555,
 					  0x5a5a5a5a, break_table,
 					  select_table);
 		break;
@@ -2087,7 +2087,7 @@ void halbtc8821c1ant_tdma(struct btc_coexist *btc, boolean force_exec,
 			    type);
 		BTC_TRACE(trace_buf);
 
-		halbtc8821c1ant_write_scbd(btc, BT_8821C_1ANT_SCBD_TDMA, TRUE);
+		//halbtc8821c1ant_write_scbd(btc, BT_8821C_1ANT_SCBD_TDMA, TRUE);
 
 		/* enable TBTT nterrupt */
 		btc->btc_write_1byte_bitmask(btc, 0x550, 0x8, 0x1);
@@ -2245,8 +2245,11 @@ void halbtc8821c1ant_tdma(struct btc_coexist *btc, boolean force_exec,
 			    type);
 		BTC_TRACE(trace_buf);
 
-		halbtc8821c1ant_write_scbd(btc, BT_8821C_1ANT_SCBD_TDMA, FALSE);
-
+		/*To avoid A2DP disconnecting when write scoreboard[9] = 1
+		if (coex_sta->is_setup_link || !coex_sta->a2dp_exist)
+			halbtc8821c1ant_write_scbd(btc, BT_8821C_1ANT_SCBD_TDMA, FALSE);
+		*/
+		
 		/* disable PS tdma */
 		switch (type) {
 		case 8: /* PTA Control */
@@ -2662,7 +2665,7 @@ void halbtc8821c1ant_set_ant_path(struct btc_coexist *btc,
 		halbtc8821c1ant_coex_ctrl_owner(btc, BT_8821C_1ANT_PCO_WLSIDE);
 
 		/* set GNT_BT to SW Hi */
-		halbtc8821c1ant_set_gnt_bt(btc, BTC_GNT_SET_SW_HIGH);
+		halbtc8821c1ant_set_gnt_bt(btc, BTC_GNT_SET_HW_PTA);
 
 		/* Set GNT_WL to SW Hi */
 		halbtc8821c1ant_set_gnt_wl(btc, BTC_GNT_SET_SW_HIGH);
@@ -3087,7 +3090,7 @@ void halbtc8821c1ant_action_bt_acl_busy(struct btc_coexist *btc)
 		if (wifi_busy && (coex_sta->bt_ble_scan_type & 0x2))
 			halbtc8821c1ant_table(btc, NM_EXCU, 3);
 		else
-			halbtc8821c1ant_table(btc, NM_EXCU, 1);
+			halbtc8821c1ant_table(btc, NM_EXCU, 4);
 
 		if (coex_sta->connect_ap_period_cnt > 0 || !wifi_busy)
 			halbtc8821c1ant_tdma(btc, NM_EXCU, TRUE, 26);
@@ -4911,8 +4914,10 @@ void ex_halbtc8821c1ant_bt_info_notify(struct btc_coexist *btc, u8 *tmp_buf,
 	}
 
 	if (rsp_source == BT_8821C_1ANT_INFO_SRC_WIFI_FW) {
+#if 0
 		halbtc8821c1ant_update_bt_link_info(btc);
 		halbtc8821c1ant_run_coex(btc, BT_8821C_1ANT_RSN_BTINFO);
+#endif
 		return;
 	}
 

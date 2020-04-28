@@ -86,7 +86,7 @@ _iqk_check_nctl_done_8821c(struct dm_struct *dm, u8 path, u32 IQK_CMD)
 		}
 		if (notready) {
 			/*ODM_sleep_ms(1);*/
-			ODM_delay_ms(1);
+			ODM_delay_us(10);
 			delay_count++;
 		} else {
 			fail = (boolean)odm_get_bb_reg(dm, R_0x1b08, BIT(26));
@@ -101,7 +101,7 @@ _iqk_check_nctl_done_8821c(struct dm_struct *dm, u8 path, u32 IQK_CMD)
 			}
 			break;
 		}
-		if (delay_count >= 50) {
+		if (delay_count >= 50000) {
 			RF_DBG(dm, DBG_RF_IQK, "[IQK]S%d IQK timeout!!!\n",
 			       path);
 			break;
@@ -135,7 +135,7 @@ void phydm_get_read_counter_8821c(struct dm_struct *dm)
 			break;
 		counter++;
 		/*ODM_sleep_ms(1);*/
-		ODM_delay_ms(1);
+		ODM_delay_us(10);
 	};
 	odm_set_rf_reg(dm, RF_PATH_A, RF_0x8, RFREGOFFSETMASK, 0x0);
 	RF_DBG(dm, DBG_RF_IQK, "[IQK]counter = %d\n", counter);
@@ -158,7 +158,7 @@ void _iqk_check_coex_status(struct dm_struct *dm, boolean beforeK)
 		u1b_tmp = odm_read_1byte(dm, 0x49c);
 		while ((u1b_tmp & BIT(1)) && (count < 100)) {
 			/*ODM_sleep_ms(10);*/
-			ODM_delay_ms(10);
+			ODM_delay_us(10);
 			u1b_tmp = odm_read_1byte(dm, 0x49c);
 			count++;
 			RF_DBG(dm, DBG_RF_IQK,
@@ -178,7 +178,7 @@ void _iqk_check_coex_status(struct dm_struct *dm, boolean beforeK)
 #if 0
 			/*ODM_sleep_ms(10);*/
 #endif
-			ODM_delay_ms(10);
+			ODM_delay_us(10);
 			u1b_tmp = odm_read_1byte(dm, 0x49c);
 			count++;
 			RF_DBG(dm, DBG_RF_IQK,
@@ -186,7 +186,7 @@ void _iqk_check_coex_status(struct dm_struct *dm, boolean beforeK)
 			       u1b_tmp, count);
 		}
 
-		if (count >= 100)
+		if (count >= 10000)
 			RF_DBG(dm, DBG_RF_IQK,
 			       "[IQK]Polling 0x49c to 1 for WiFi calibration H2C cmd FAIL! count(%d)\n",
 			       count);
@@ -522,7 +522,7 @@ void _iqk_backup_iqk_8821c(struct dm_struct *dm, u8 step, u8 path)
 				}
 			}
 		}
-		for (i = 0; i < 4; i++) {
+		for (i = 0; i < SS_8821C; i++) {
 			iqk_info->rxiqk_fail_code[0][i] = 0x0;
 			iqk_info->rxiqk_agc[0][i] = 0x0;
 			for (j = 0; j < 2; j++) {
@@ -576,9 +576,9 @@ void _iqk_reload_iqk_setting_8821c(struct dm_struct *dm, u8 channel,
 				odm_write_4byte(dm, 0x1bd8, ((0xc0000000 >> idx) + 0x1) + (i * 4) + (iqk_info->iqk_cfir_imag[channel][path][idx][i] << 9));
 			}
 			if (idx == 0)
-				odm_set_bb_reg(dm, iqk_apply[path], BIT(0), ~(iqk_info->iqk_fail_report[channel][path][idx]));
+				odm_set_bb_reg(dm, iqk_apply[path], BIT(0), !(iqk_info->iqk_fail_report[channel][path][idx]));
 			else
-				odm_set_bb_reg(dm, iqk_apply[path], BIT(10), ~(iqk_info->iqk_fail_report[channel][path][idx]));
+				odm_set_bb_reg(dm, iqk_apply[path], BIT(10), !(iqk_info->iqk_fail_report[channel][path][idx]));
 		}
 		odm_set_bb_reg(dm, R_0x1bd8, MASKDWORD, 0x0);
 		odm_set_bb_reg(dm, R_0x1b0c, BIT(13) | BIT(12), 0x0);
@@ -942,11 +942,11 @@ _iqk_check_cal_8821c(struct dm_struct *dm, u32 IQK_CMD)
 #if 0
 			/*ODM_sleep_ms(1);*/
 #endif
-			ODM_delay_ms(1);
+			ODM_delay_us(10);
 			delay_count++;
 		}
 
-		if (delay_count >= 50) {
+		if (delay_count >= 50000) {
 			fail = true;
 			RF_DBG(dm, DBG_RF_IQK, "[IQK]IQK timeout!!!\n");
 			break;
@@ -1004,7 +1004,6 @@ _iqk_rx_iqk_gain_search_fail_8821c(struct dm_struct *dm, u8 path, u8 step)
 #if 0
 	/*ODM_sleep_ms(GS_delay_8821C);*/
 #endif
-	ODM_delay_ms(GS_delay_8821C);
 	fail = _iqk_check_cal_8821c(dm, IQK_CMD);
 	RF_DBG(dm, DBG_RF_IQK, "[IQK]check 0x49c = %x\n",
 	       odm_read_1byte(dm, 0x49c));
@@ -1147,7 +1146,6 @@ _iqk_rx_iqk_gain_search_fail_by_toneindex_8821c(struct dm_struct *dm, u8 path,
 #if 0
 	/*ODM_sleep_ms(GS_delay_8821C);*/
 #endif
-	ODM_delay_ms(GS_delay_8821C);
 	fail = _iqk_check_cal_8821c(dm, IQK_CMD);
 	_iqk_set_gnt_wl_gnt_bt(dm, false);
 
@@ -1181,7 +1179,7 @@ _lok_one_shot_8821c(void *dm_void, u8 path, u8 pad_index)
 #if 0
 	/*ODM_sleep_ms(LOK_delay_8821C);*/
 #endif
-	ODM_delay_ms(LOK_delay_8821C);
+	ODM_delay_us(10);
 
 	delay_count = 0;
 	LOK_notready = true;
@@ -1196,11 +1194,11 @@ _lok_one_shot_8821c(void *dm_void, u8 path, u8 pad_index)
 #if 0
 			/*ODM_sleep_ms(1);*/
 #endif
-			ODM_delay_ms(1);
+			ODM_delay_us(10);
 			delay_count++;
 		}
 
-		if (delay_count >= 50) {
+		if (delay_count >= 50000) {
 			RF_DBG(dm, DBG_RF_IQK, "[IQK]S%d LOK timeout!!!\n",
 			       path);
 			break;
@@ -1302,7 +1300,6 @@ _iqk_one_shot_8821c(void *dm_void, u8 path, u8 idx)
 #if 0
 	/*ODM_sleep_ms(WBIQK_delay_8821C);*/
 #endif
-	ODM_delay_ms(WBIQK_delay_8821C);
 
 	fail = _iqk_check_nctl_done_8821c(dm, path, IQK_CMD);
 
@@ -2218,12 +2215,12 @@ void _dpk_toggle_rxagc(struct dm_struct *dm, boolean reset)
 #if 0
 	/* 	 ODM_sleep_ms(2);*/
 #endif
-	ODM_delay_ms(2);
+	ODM_delay_us(10);
 	odm_set_bb_reg(dm, R_0xc50, BIT(3) | BIT(2) | BIT(1) | BIT(0), 0x2);
 #if 0
 	/*	 ODM_sleep_ms(2);*/
 #endif
-	ODM_delay_ms(2);
+	ODM_delay_us(10);
 	odm_set_bb_reg(dm, R_0xc50, BIT(3) | BIT(2) | BIT(1) | BIT(0), 0x0);
 	odm_write_4byte(dm, 0xc50, tmp1);
 }
@@ -2760,7 +2757,7 @@ u8 _dpk_get_dpk_tx_agc_8821c(struct dm_struct *dm, u8 path)
 #if 0
 	/*ODM_sleep_ms(1);*/
 #endif
-	ODM_delay_ms(1);
+	ODM_delay_us(10);
 	odm_write_4byte(dm, 0x1b00, IQK_CMD);
 	odm_write_4byte(dm, 0x1b00, IQK_CMD + 1);
 
@@ -2830,7 +2827,7 @@ _dpk_enable_dpk_8821c(struct dm_struct *dm, u8 path, u8 best_tx_agc)
 	_dpk_set_dpk_pa_scan(dm, RF_PATH_A);
 
 	/*ODM_sleep_ms(1);*/
-	ODM_delay_ms(1);
+	ODM_delay_us(10);
 	odm_set_bb_reg(dm, R_0x1bc8, BIT(31), 0x1);
 	odm_write_4byte(dm, 0x8f8, 0x41400080);
 
@@ -2838,7 +2835,7 @@ _dpk_enable_dpk_8821c(struct dm_struct *dm, u8 path, u8 best_tx_agc)
 		odm_set_rf_reg(dm, path, RF_0x8, RFREGOFFSETMASK, 0x0);
 
 	/*ODM_sleep_ms(1);*/
-	ODM_delay_ms(1);
+	ODM_delay_us(10);
 	odm_write_4byte(dm, 0x1b00, IQK_CMD);
 	odm_write_4byte(dm, 0x1b00, IQK_CMD + 1);
 
@@ -2898,7 +2895,7 @@ _dpk_enable_dpd_8821c(struct dm_struct *dm, u8 path, u8 best_tx_agc)
 	if (odm_get_rf_reg(dm, path, RF_0x08, RFREGOFFSETMASK) != 0x0)
 		odm_set_rf_reg(dm, path, RF_0x8, RFREGOFFSETMASK, 0x0);
 	/*ODM_sleep_ms(1);*/
-	ODM_delay_ms(1);
+	ODM_delay_us(10);
 	odm_write_4byte(dm, 0x1b00, IQK_CMD);
 	odm_write_4byte(dm, 0x1b00, IQK_CMD + 1);
 	fail = _iqk_check_nctl_done_8821c(dm, path, IQK_CMD);
@@ -2990,7 +2987,7 @@ void _phy_dpd_calibrate_8821c(struct dm_struct *dm, boolean reset)
 	/*ODM_sleep_ms(2);*/
 #endif
 
-	ODM_delay_ms(2);
+	ODM_delay_us(10);
 	RF_DBG(dm, DBG_RF_IQK, "[DPK]In DPD Process(2), Best TXAGC = 0x%x\n",
 	       best_tx_agc);
 
@@ -3001,7 +2998,7 @@ void _phy_dpd_calibrate_8821c(struct dm_struct *dm, boolean reset)
 #if 0
 	/*ODM_sleep_ms(2);*/
 #endif
-	ODM_delay_ms(2);
+	ODM_delay_us(10);
 	if (_dpk_enable_dpd_8821c(dm, RF_PATH_A, best_tx_agc)) {
 		RF_DBG(dm, DBG_RF_IQK,
 		       "[DPK]In DPD Process(4), DPD process is Fail\n");
@@ -3090,7 +3087,7 @@ u32 _iqk_tximr_selfcheck_8821c(void *dm_void, u8 tone_index, u8 path)
 		IQK_CMD = 0x00000800;
 		odm_write_4byte(dm, 0x1b34, IQK_CMD + 1);
 		odm_write_4byte(dm, 0x1b34, IQK_CMD);
-		ODM_delay_ms(1);
+		ODM_delay_us(10);
 		odm_write_4byte(dm, 0x1bd4, 0x00040001);
 		tx_ini_power_H[i] = odm_read_4byte(dm, 0x1bfc);
 		odm_write_4byte(dm, 0x1bd4, 0x000C0001);
@@ -3290,6 +3287,7 @@ void _phy_iq_calibrate_8821c(struct dm_struct *dm, boolean reset,
 						0x9a4, 0xa04, 0x838};
 	u32 backup_rf_reg[RF_REG_NUM_8821C] = {0xdf, 0xde, 0x8f, 0x0, 0x1};
 	boolean is_mp = false;
+	int i = 0;
 
 	struct dm_iqk_info *iqk_info = &dm->IQK_info;
 
@@ -3309,7 +3307,7 @@ void _phy_iq_calibrate_8821c(struct dm_struct *dm, boolean reset,
 	       "[IQK]band_type = %s, band_width = %d, ExtPA2G = %d, ext_pa_5g = %d\n",
 	       (*dm->band_type == ODM_BAND_5G) ? "5G" : "2G", *dm->band_width,
 	       dm->ext_pa, dm->ext_pa_5g);
-	RF_DBG(dm, DBG_RF_IQK, "[IQK]Interface = %d, cut_version = %x\n",
+	RF_DBG(dm, DBG_RF_IQK, "[IQK]Interface = %d, Cv = %x\n",
 	       dm->support_interface, dm->cut_version);
 
 	iqk_info->tmp_gntwl = _iqk_indirect_read_reg(dm, 0x38);
@@ -3359,7 +3357,8 @@ void _phy_iq_calibrate_8821c(struct dm_struct *dm, boolean reset,
 #if 0
 		/*ODM_sleep_ms(50);*/
 #endif
-		ODM_delay_ms(50);
+		for (i = 0; i<1000; i++)
+			ODM_delay_us(10);
 	}
 
 	if (!do_imr_test) {
@@ -3457,7 +3456,7 @@ void _phy_iqk_debug_inner_lpbk_psd_8821c(struct dm_struct *dm, u8 path)
 			odm_write_4byte(dm, 0x1b3c, 0x20000000);
 			odm_write_4byte(dm, 0x1b34, 0x00000801);
 			odm_write_4byte(dm, 0x1b34, 0x00000800);
-			ODM_delay_ms(2);
+			ODM_delay_us(10);
 			/*PSD_bef_K*/
 			odm_write_4byte(dm, 0x1bd4, 0x000c0001);
 			psd_pwr = odm_read_4byte(dm, 0x1bfc);

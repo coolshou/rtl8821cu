@@ -100,7 +100,7 @@ void rtw_btcoex_ScanNotify(PADAPTER padapter, u8 type)
 	hal_btcoex_ScanNotify(padapter, type);
 }
 
-void rtw_btcoex_ConnectNotify(PADAPTER padapter, u8 action)
+static void _rtw_btcoex_connect_notify(PADAPTER padapter, u8 action)
 {
 	PHAL_DATA_TYPE	pHalData;
 
@@ -1783,5 +1783,19 @@ void rtw_btcoex_set_ant_info(PADAPTER padapter)
 	else
 #endif
 		rtw_btcoex_wifionly_AntInfoSetting(padapter);
+}
+
+void rtw_btcoex_connect_notify(PADAPTER padapter, u8 join_type)
+{
+#ifdef CONFIG_BT_COEXIST
+	PHAL_DATA_TYPE	pHalData;
+
+	pHalData = GET_HAL_DATA(padapter);
+
+	if (pHalData->EEPROMBluetoothCoexist == _TRUE)
+		_rtw_btcoex_connect_notify(padapter, join_type ? _FALSE : _TRUE);
+	else
+#endif /* CONFIG_BT_COEXIST */
+	rtw_btcoex_wifionly_connect_notify(padapter);
 }
 

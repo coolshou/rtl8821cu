@@ -1869,6 +1869,10 @@ unsigned int OnBeacon(_adapter *padapter, union recv_frame *precv_frame)
 						RTW_INFO("%s: beacon keys ready\n", __func__);
 						_rtw_memcpy(&pmlmepriv->cur_beacon_keys,
 							&recv_beacon, sizeof(recv_beacon));
+						if (is_hidden_ssid(recv_beacon.ssid, recv_beacon.ssid_len)) {
+							_rtw_memcpy(pmlmepriv->cur_beacon_keys.ssid, pmlmeinfo->network.Ssid.Ssid, IW_ESSID_MAX_SIZE);
+							pmlmepriv->cur_beacon_keys.ssid_len = pmlmeinfo->network.Ssid.SsidLength;
+						}
 					} else {
 						RTW_ERR("%s: get beacon keys failed\n", __func__);
 						_rtw_memset(&pmlmepriv->cur_beacon_keys, 0, sizeof(recv_beacon));
@@ -11162,6 +11166,8 @@ void start_create_ibss(_adapter *padapter)
 			join_type = 0;
 			rtw_hal_set_hwreg(padapter, HW_VAR_MLME_JOIN, (u8 *)(&join_type));
 
+			rtw_btcoex_connect_notify(padapter, join_type);
+
 			report_join_res(padapter, 1, WLAN_STATUS_SUCCESS);
 			pmlmeinfo->state |= WIFI_FW_ASSOC_SUCCESS;
 			rtw_indicate_connect(padapter);
@@ -12306,6 +12312,8 @@ void mlmeext_joinbss_event_callback(_adapter *padapter, int join_res)
 		if ((pmlmeinfo->state & 0x03) == WIFI_FW_STATION_STATE)
 			rtw_hal_rcr_set_chk_bssid(padapter, MLME_STA_DISCONNECTED);
 
+		rtw_btcoex_connect_notify(padapter, join_type);
+
 		goto exit_mlmeext_joinbss_event_callback;
 	}
 
@@ -12392,6 +12400,8 @@ void mlmeext_joinbss_event_callback(_adapter *padapter, int join_res)
 		rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_CONNECT, RTW_CMDF_DIRECTLY);
 #endif
 
+	rtw_btcoex_connect_notify(padapter, join_type);
+
 #ifdef CONFIG_BEAMFORMING
 	if (psta)
 		beamforming_wk_cmd(padapter, BEAMFORMING_CTRL_ENTER, (u8 *)psta, sizeof(struct sta_info), 0);
@@ -12439,6 +12449,8 @@ void mlmeext_sta_add_event_callback(_adapter *padapter, struct sta_info *psta)
 
 		join_type = 2;
 		rtw_hal_set_hwreg(padapter, HW_VAR_MLME_JOIN, (u8 *)(&join_type));
+
+		rtw_btcoex_connect_notify(padapter, join_type);
 	}
 
 	/* update adhoc sta_info */
@@ -13209,6 +13221,10 @@ void rtw_ft_update_bcn(_adapter *padapter, union recv_frame *precv_frame)
 					RTW_INFO("%s: beacon keys ready\n", __func__);
 					_rtw_memcpy(&pmlmepriv->cur_beacon_keys,
 						&recv_beacon, sizeof(recv_beacon));
+					if (is_hidden_ssid(recv_beacon.ssid, recv_beacon.ssid_len)) {
+						_rtw_memcpy(pmlmepriv->cur_beacon_keys.ssid, pmlmeinfo->network.Ssid.Ssid, IW_ESSID_MAX_SIZE);
+						pmlmepriv->cur_beacon_keys.ssid_len = pmlmeinfo->network.Ssid.SsidLength;
+					}
 				} else {
 					RTW_ERR("%s: get beacon keys failed\n", __func__);
 					_rtw_memset(&pmlmepriv->cur_beacon_keys, 0, sizeof(recv_beacon));
@@ -14028,6 +14044,8 @@ u8 join_cmd_hdl(_adapter *padapter, u8 *pbuf)
 
 	join_type = 0;
 	rtw_hal_set_hwreg(padapter, HW_VAR_MLME_JOIN, (u8 *)(&join_type));
+
+	rtw_btcoex_connect_notify(padapter, join_type);
 
 	doiqk = _TRUE;
 	rtw_hal_set_hwreg(padapter , HW_VAR_DO_IQK , &doiqk);
@@ -16059,7 +16077,7 @@ void rtw_join_done_chk_ch(_adapter *adapter, int join_res)
 
 					rtw_start_bss_hdl_after_chbw_decided(iface);
 
-					if (MLME_IS_GO(iface) || MLME_IS_MESH(iface)) { /* pure AP is not needed*/
+					{
 						#if defined(CONFIG_IOCTL_CFG80211) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
 						u8 ht_option = 0;
 
@@ -16069,7 +16087,7 @@ void rtw_join_done_chk_ch(_adapter *adapter, int join_res)
 
 						rtw_cfg80211_ch_switch_notify(iface
 							, mlmeext->cur_channel, mlmeext->cur_bwmode, mlmeext->cur_ch_offset
-							, ht_option);
+							, ht_option, 0);
 						#endif
 					}
 				}
@@ -16282,12 +16300,12 @@ exit:
 			ht_option = adapter->mlmepriv.htpriv.ht_option;
 #endif /* CONFIG_80211N_HT */
 
-			/* 
+			/*
 				when supplicant send the mlme frame,
 				the bss freq is updated by channel switch event.
 			*/
 			rtw_cfg80211_ch_switch_notify(adapter,
-				cur_ch, cur_bw, cur_ch_offset, ht_option);
+				cur_ch, cur_bw, cur_ch_offset, ht_option, 1);
 		}
 #endif
 	}

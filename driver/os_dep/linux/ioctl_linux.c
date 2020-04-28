@@ -9519,6 +9519,7 @@ static int rtw_mp_efuse_set(struct net_device *dev,
 #endif
 		if (rtw_BT_efuse_map_write(padapter, addr, cnts, setdata) == _FAIL) {
 			RTW_INFO("%s: rtw_BT_efuse_map_write error!!\n", __FUNCTION__);
+			sprintf(extra, "BT write FAIL !!!\n");
 			err = -EFAULT;
 			goto exit;
 		}

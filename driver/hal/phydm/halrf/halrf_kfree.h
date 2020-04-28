@@ -28,7 +28,7 @@
 
 #define KFREE_VERSION "1.0"
 
-#define KFREE_BAND_NUM 8
+#define KFREE_BAND_NUM 9
 #define KFREE_CH_NUM 3
 
 #if (DM_ODM_SUPPORT_TYPE & (ODM_WIN | ODM_AP))
@@ -163,6 +163,7 @@
 #define PPG_5GM2_TXA_8721D 0x1EA
 #define PPG_5GH1_TXA_8721D 0x1E9
 
+/*8197G*/
 #define PPG_THERMAL_OFFSET_97G 0x50
 #define PPG_2GM_TXAB_97G 0x51
 #define PPG_2GL_TXAB_97G 0x53
@@ -171,6 +172,13 @@
 #define PPG_LNA_2GA_97G 0x21
 #define PPG_LNA_2GB_97G 0x22
 
+/*8710C Ameba Z2*/
+#define PPG_THERMAL_OFFSET_10C 0x1EF
+#define PPG_2GL_TX_10C 0x1D4
+#define PPG_2GM_TX_10C 0x1EE
+#define PPG_2GH_TX_10C 0x1D2
+#define PPG_PABIAS_10C 0x1D6
+#define PPG_LNA_10C 0x1D0
 
 struct odm_power_trim_data {
 	u8 flag;

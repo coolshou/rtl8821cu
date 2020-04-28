@@ -1055,7 +1055,7 @@ void EFUSE_GetEfuseDefinition(PADAPTER adapter, u8 efusetype, u8 type, void *out
 			*(u16 *)out = (u16)v32;
 			return;
 
-		case TYPE_EFUSE_REAL_CONTENT_LEN:	
+		case TYPE_EFUSE_REAL_CONTENT_LEN:
 			rtw_halmac_get_physical_efuse_size(d, &v32);
 			*(u16 *)out = (u16)v32;
 			return;
@@ -1161,7 +1161,7 @@ u8 rtw_efuse_bt_access(PADAPTER adapter, u8 write, u16 addr, u16 cnts, u8 *data)
 
 		if (efuse) {
 			err = rtw_halmac_read_bt_physical_efuse_map(d, efuse, size);
-			
+
 			if (err == -1) {
 				RTW_ERR("%s: rtw_halmac_read_bt_physical_efuse_map fail!\n", __FUNCTION__);
 				rtw_mfree(efuse, size);
@@ -1350,6 +1350,91 @@ u8 rtw_BT_efuse_map_read(PADAPTER adapter, u16 addr, u16 cnts, u8 *data)
 	return _SUCCESS;
 }
 
+static u16
+hal_EfuseGetCurrentSize_BT(
+	PADAPTER	padapter,
+	u8			bPseudoTest)
+{
+#ifdef HAL_EFUSE_MEMORY
+	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
+	PEFUSE_HAL		pEfuseHal = &pHalData->EfuseHal;
+#endif
+	u16 btusedbytes;
+	u16	efuse_addr;
+	u8	bank, startBank;
+	u8	hoffset = 0, hworden = 0;
+	u8	efuse_data, word_cnts = 0;
+	u16	retU2 = 0;
+
+
+	btusedbytes = fakeBTEfuseUsedBytes;
+
+	efuse_addr = (u16)((btusedbytes % EFUSE_BT_REAL_BANK_CONTENT_LEN));
+	startBank = (u8)(1 + (btusedbytes / EFUSE_BT_REAL_BANK_CONTENT_LEN));
+
+	RTW_INFO("%s: start from bank=%d addr=0x%X\n", __FUNCTION__, startBank, efuse_addr);
+	retU2 = EFUSE_BT_REAL_CONTENT_LEN - EFUSE_PROTECT_BYTES_BANK;
+
+	for (bank = startBank; bank < 3; bank++) {
+		if (hal_EfuseSwitchToBank(padapter, bank, bPseudoTest) == _FALSE) {
+			RTW_ERR("%s: switch bank(%d) Fail!!\n", __FUNCTION__, bank);
+			/* bank = EFUSE_MAX_BANK; */
+			break;
+		}
+
+		/* only when bank is switched we have to reset the efuse_addr. */
+		if (bank != startBank)
+			efuse_addr = 0;
+
+
+		while (AVAILABLE_EFUSE_ADDR(efuse_addr)) {
+			if (rtw_efuse_bt_access(padapter, _FALSE, efuse_addr, 1, &efuse_data) == _FALSE) {
+				RTW_ERR("%s: efuse_OneByteRead Fail! addr=0x%X !!\n", __FUNCTION__, efuse_addr);
+				/* bank = EFUSE_MAX_BANK; */
+				break;
+			}
+			RTW_INFO("%s: efuse_OneByteRead ! addr=0x%X !efuse_data=0x%X! bank =%d\n", __FUNCTION__, efuse_addr, efuse_data, bank);
+
+			if (efuse_data == 0xFF)
+				break;
+
+			if (EXT_HEADER(efuse_data)) {
+				hoffset = GET_HDR_OFFSET_2_0(efuse_data);
+				efuse_addr++;
+				rtw_efuse_bt_access(padapter, _FALSE, efuse_addr, 1, &efuse_data);
+				RTW_INFO("%s: efuse_OneByteRead EXT_HEADER ! addr=0x%X !efuse_data=0x%X! bank =%d\n", __FUNCTION__, efuse_addr, efuse_data, bank);
+
+				if (ALL_WORDS_DISABLED(efuse_data)) {
+					efuse_addr++;
+					continue;
+				}
+
+				/*				hoffset = ((hoffset & 0xE0) >> 5) | ((efuse_data & 0xF0) >> 1); */
+				hoffset |= ((efuse_data & 0xF0) >> 1);
+				hworden = efuse_data & 0x0F;
+			} else {
+				hoffset = (efuse_data >> 4) & 0x0F;
+				hworden =  efuse_data & 0x0F;
+			}
+
+			RTW_INFO(FUNC_ADPT_FMT": Offset=%d Worden=%#X\n",
+				 FUNC_ADPT_ARG(padapter), hoffset, hworden);
+
+			word_cnts = Efuse_CalculateWordCnts(hworden);
+			/* read next header */
+			efuse_addr += (word_cnts * 2) + 1;
+		}
+		/* Check if we need to check next bank efuse */
+		if (efuse_addr < retU2)
+			break;/* don't need to check next bank. */
+	}
+	retU2 = ((bank - 1) * EFUSE_BT_REAL_BANK_CONTENT_LEN) + efuse_addr;
+
+	fakeBTEfuseUsedBytes = retU2;
+	RTW_INFO("%s: CurrentSize=%d\n", __FUNCTION__, retU2);
+	return retU2;
+}
+
 u8 rtw_BT_efuse_map_write(PADAPTER adapter, u16 addr, u16 cnts, u8 *data)
 {
 #define RT_ASSERT_RET(expr)									\
@@ -1363,9 +1448,10 @@ u8 rtw_BT_efuse_map_write(PADAPTER adapter, u16 addr, u16 cnts, u8 *data)
 	u8 *efuse = NULL;
 	u8	*map;
 	u8	newdata[PGPKT_DATA_SIZE];
-	s32 i = 0, j = 0, idx;
+	s32 i = 0, j = 0, idx = 0, chk_total_byte = 0;
 	u8	ret = _SUCCESS;
 	u16 mapLen = 1024;
+	u16 startAddr = 0;
 
 	if ((addr + cnts) > mapLen)
 		return _FAIL;
@@ -1404,6 +1490,41 @@ u8 rtw_BT_efuse_map_write(PADAPTER adapter, u16 addr, u16 cnts, u8 *data)
 			RTW_INFO("%s , efuse[%x] = %x, map = %x\n", __func__, addr + i, efuse[ addr + i], map[addr + i]);
 		}
 	}
+	/* precheck pg efuse data byte*/
+	chk_total_byte = 0;
+	idx = 0;
+	offset = (addr >> 3);
+
+	while (idx < cnts) {
+		word_en = 0xF;
+		j = (addr + idx) & 0x7;
+		for (i = j; i < PGPKT_DATA_SIZE && idx < cnts; i++, idx++) {
+			if (efuse[addr + idx] != map[addr + idx])
+				word_en &= ~BIT(i >> 1);
+		}
+
+		if (word_en != 0xF) {
+			chk_total_byte += Efuse_CalculateWordCnts(word_en) * 2;
+
+			if (offset >= EFUSE_MAX_SECTION_BASE) /* Over EFUSE_MAX_SECTION 16 for 2 ByteHeader */
+				chk_total_byte += 2;
+			else
+				chk_total_byte += 1;
+		}
+
+		offset++;
+	}
+
+	RTW_INFO("Total PG bytes Count = %d\n", chk_total_byte);
+	startAddr = hal_EfuseGetCurrentSize_BT(adapter, _FALSE);
+	RTW_INFO("%s: startAddr=%#X\n", __func__, startAddr);
+
+	if (!AVAILABLE_EFUSE_ADDR(startAddr + chk_total_byte)) {
+		RTW_INFO("%s: startAddr(0x%X) + PG data len %d >= efuse BT available offset (0x%X)\n",
+			 __func__, startAddr, chk_total_byte, EFUSE_BT_REAL_CONTENT_LEN - EFUSE_PROTECT_BYTES_BANK);
+		ret = _FAIL;
+		goto exit;
+	}
 
 	idx = 0;
 	offset = (addr >> 3);
@@ -1412,9 +1533,9 @@ u8 rtw_BT_efuse_map_write(PADAPTER adapter, u16 addr, u16 cnts, u8 *data)
 		j = (addr + idx) & 0x7;
 		_rtw_memcpy(newdata, &map[offset << 3], PGPKT_DATA_SIZE);
 		for (i = j; i < PGPKT_DATA_SIZE && idx < cnts; i++, idx++) {
-			if (efuse[idx] != map[addr + idx]) {
+			if (efuse[addr + idx] != map[addr + idx]) {
 				word_en &= ~BIT(i >> 1);
-				newdata[i] = efuse[idx];
+				newdata[i] = efuse[addr + idx];
 			}
 		}
 
@@ -1433,7 +1554,7 @@ u8 rtw_BT_efuse_map_write(PADAPTER adapter, u16 addr, u16 cnts, u8 *data)
 	}
 exit:
 	rtw_mfree(map, mapLen);
-	return _SUCCESS;
+	return ret;
 }
 
 void hal_ReadEFuse_BT_logic_map(
@@ -1476,7 +1597,7 @@ void hal_ReadEFuse_BT_logic_map(
 
 	if (rtw_efuse_bt_access(padapter, _FALSE, 0, EFUSE_BT_REAL_CONTENT_LEN, phyefuse))
 		dump_buf(phyefuse, EFUSE_BT_REAL_BANK_CONTENT_LEN);
-	
+
 	total = BANK_NUM;
 	for (bank = 1; bank <= total; bank++) { /* 8723d Max bake 0~2 */
 		eFuse_Addr = 0;
@@ -1637,7 +1758,7 @@ static u8 hal_EfusePgPacketWrite2ByteHeader(
 	/*	RTW_INFO("%s: pg_header=0x%x\n", __FUNCTION__, pg_header); */
 
 	do {
-		
+
 		rtw_efuse_bt_access(padapter, _TRUE, efuse_addr, 1, &pg_header);
 		rtw_efuse_bt_access(padapter, _FALSE, efuse_addr, 1, &tmp_header);
 
@@ -1844,92 +1965,7 @@ u8 efuse_OneByteRead(struct _ADAPTER *a, u16 addr, u8 *data, u8 bPseudoTest)
 		}
 
 		return ret;
-	
-}
 
-static u16
-hal_EfuseGetCurrentSize_BT(
-	PADAPTER	padapter,
-	u8			bPseudoTest)
-{
-#ifdef HAL_EFUSE_MEMORY
-	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
-	PEFUSE_HAL		pEfuseHal = &pHalData->EfuseHal;
-#endif
-	u16 btusedbytes;
-	u16	efuse_addr;
-	u8	bank, startBank;
-	u8	hoffset = 0, hworden = 0;
-	u8	efuse_data, word_cnts = 0;
-	u16	retU2 = 0;
-
-
-	btusedbytes = fakeBTEfuseUsedBytes;
-
-	efuse_addr = (u16)((btusedbytes % EFUSE_BT_REAL_BANK_CONTENT_LEN));
-	startBank = (u8)(1 + (btusedbytes / EFUSE_BT_REAL_BANK_CONTENT_LEN));
-
-	RTW_INFO("%s: start from bank=%d addr=0x%X\n", __FUNCTION__, startBank, efuse_addr);
-	retU2 = EFUSE_BT_REAL_CONTENT_LEN - EFUSE_PROTECT_BYTES_BANK;
-
-	for (bank = startBank; bank < 3; bank++) {
-		if (hal_EfuseSwitchToBank(padapter, bank, bPseudoTest) == _FALSE) {
-			RTW_ERR("%s: switch bank(%d) Fail!!\n", __FUNCTION__, bank);
-			/* bank = EFUSE_MAX_BANK; */
-			break;
-		}
-
-		/* only when bank is switched we have to reset the efuse_addr. */
-		if (bank != startBank)
-			efuse_addr = 0;
-
-
-		while (AVAILABLE_EFUSE_ADDR(efuse_addr)) {
-			if (rtw_efuse_bt_access(padapter, _FALSE, efuse_addr, 1, &efuse_data) == _FALSE) {
-				RTW_ERR("%s: efuse_OneByteRead Fail! addr=0x%X !!\n", __FUNCTION__, efuse_addr);
-				/* bank = EFUSE_MAX_BANK; */
-				break;
-			}
-			RTW_INFO("%s: efuse_OneByteRead ! addr=0x%X !efuse_data=0x%X! bank =%d\n", __FUNCTION__, efuse_addr, efuse_data, bank);
-
-			if (efuse_data == 0xFF)
-				break;
-
-			if (EXT_HEADER(efuse_data)) {
-				hoffset = GET_HDR_OFFSET_2_0(efuse_data);
-				efuse_addr++;
-				rtw_efuse_bt_access(padapter, _FALSE, efuse_addr, 1, &efuse_data);
-				RTW_INFO("%s: efuse_OneByteRead EXT_HEADER ! addr=0x%X !efuse_data=0x%X! bank =%d\n", __FUNCTION__, efuse_addr, efuse_data, bank);
-
-				if (ALL_WORDS_DISABLED(efuse_data)) {
-					efuse_addr++;
-					continue;
-				}
-
-				/*				hoffset = ((hoffset & 0xE0) >> 5) | ((efuse_data & 0xF0) >> 1); */
-				hoffset |= ((efuse_data & 0xF0) >> 1);
-				hworden = efuse_data & 0x0F;
-			} else {
-				hoffset = (efuse_data >> 4) & 0x0F;
-				hworden =  efuse_data & 0x0F;
-			}
-
-			RTW_INFO(FUNC_ADPT_FMT": Offset=%d Worden=%#X\n",
-				 FUNC_ADPT_ARG(padapter), hoffset, hworden);
-
-			word_cnts = Efuse_CalculateWordCnts(hworden);
-			/* read next header */
-			efuse_addr += (word_cnts * 2) + 1;
-		}
-		/* Check if we need to check next bank efuse */
-		if (efuse_addr < retU2)
-			break;/* don't need to check next bank. */
-	}
-	retU2 = ((bank - 1) * EFUSE_BT_REAL_BANK_CONTENT_LEN) + efuse_addr;
-
-	fakeBTEfuseUsedBytes = retU2;
-	RTW_INFO("%s: CurrentSize=%d\n", __FUNCTION__, retU2);
-	return retU2;
 }
 
 
@@ -3256,7 +3292,7 @@ u8 rtw_efuse_file_read(PADAPTER padapter, u8 *filepatch, u8 *buf, u32 len)
 	while ((j < len) && (i < count)) {
 		if (ptmpbuf[i] == '\0')
 			break;
-	
+
 		ptr = strpbrk(&ptmpbuf[i], " \t\n\r");
 		if (ptr) {
 			if (ptr == &ptmpbuf[i]) {

@@ -739,6 +739,8 @@ config_phydm_switch_band_8821c(struct dm_struct *dm, u8 central_ch)
 
 		/* RF band */
 		rf_reg18 = (rf_reg18 & (~(BIT(16) | BIT(9) | BIT(8))));
+		rf_reg18 = (rf_reg18 & (~(MASKBYTE0)));
+		rf_reg18 = (rf_reg18 | central_ch);
 #if (PHYDM_FW_API_FUNC_ENABLE_8821C == 1)
 		/* Switch WLG/BTG*/
 		if (dm->default_rf_set_8821c == SWITCH_TO_BTG)
@@ -771,6 +773,8 @@ config_phydm_switch_band_8821c(struct dm_struct *dm, u8 central_ch)
 		/* RF band */
 		rf_reg18 = (rf_reg18 & (~(BIT(16) | BIT(9) | BIT(8))));
 		rf_reg18 = (rf_reg18 | BIT(8) | BIT(16));
+		rf_reg18 = (rf_reg18 & (~(MASKBYTE0)));
+		rf_reg18 = (rf_reg18 | central_ch);
 #if (PHYDM_FW_API_FUNC_ENABLE_8821C == 1)
 		/* Switch WLA */
 		config_phydm_switch_rf_set_8821c(dm, SWITCH_TO_WLA);
@@ -785,7 +789,9 @@ config_phydm_switch_band_8821c(struct dm_struct *dm, u8 central_ch)
 		return false;
 	}
 
+	phydm_stop_ic_trx(dm, PHYDM_SET);
 	odm_set_rf_reg(dm, RF_PATH_A, RF_0x18, RFREGOFFSETMASK, rf_reg18);
+	phydm_stop_ic_trx(dm, PHYDM_REVERT);
 
 	if (phydm_rfe_8821c(dm, central_ch) == false)
 		return false;
@@ -937,7 +943,9 @@ config_phydm_switch_channel_8821c(struct dm_struct *dm, u8 central_ch)
 		return false;
 	}
 
+	phydm_stop_ic_trx(dm, PHYDM_SET);
 	odm_set_rf_reg(dm, RF_PATH_A, RF_0x18, RFREGOFFSETMASK, rf_reg18);
+	phydm_stop_ic_trx(dm, PHYDM_REVERT);
 
 	if (dm->cut_version == ODM_CUT_A)
 		odm_set_rf_reg(dm, RF_PATH_A, RF_0xb8, RFREGOFFSETMASK, rf_reg_b8);
@@ -1140,7 +1148,9 @@ config_phydm_switch_bandwidth_8821c(struct dm_struct *dm, u8 primary_ch_idx,
 	}
 
 	/* Write RF register */
+	phydm_stop_ic_trx(dm, PHYDM_SET);
 	odm_set_rf_reg(dm, RF_PATH_A, RF_0x18, RFREGOFFSETMASK, rf_reg18);
+	phydm_stop_ic_trx(dm, PHYDM_REVERT);
 
 	if (!rf_reg_status) {
 		PHYDM_DBG(dm, ODM_PHY_CONFIG,

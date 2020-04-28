@@ -1024,6 +1024,13 @@ struct halmac_indicator {
 
 struct halmacpriv {
 	/* flags */
+#ifdef CONFIG_SDIO_HCI
+	/*
+	 * Indirect Access for SDIO,
+	 * 0:default, 1:enable, 2:disable
+	 */
+	u8 sdio_io_indir;
+#endif /* CONFIG_SDIO_HCI */
 
 	/* For asynchronous functions */
 	struct halmac_indicator *indicator;
