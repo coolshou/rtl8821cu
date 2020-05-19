@@ -19,7 +19,7 @@ VERSION := $(shell dpkg-parsechangelog | grep '^Version:' | cut -d' ' -f2 | cut 
 	dh "$@" --with dkms,modaliases
 
 override_dh_install:
-	dh_install core hal include Kconfig Makefile os_dep platform rtl8821c.mk usr/src/rtl8821cu-$(VERSION)/
+	dh_install core hal halmac.mk include Kconfig Makefile os_dep platform rtl8821c.mk usr/src/rtl8821cu-$(VERSION)/
 	find debian/rtl8821cu-dkms/usr/src/rtl8821cu-$(VERSION) -type f -exec chmod 644 {} \;
 
 override_dh_dkms:

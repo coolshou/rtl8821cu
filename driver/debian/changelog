@@ -1,3 +1,9 @@
+rtl8821cu (5.8.1.4-36402.20200519) unstable; urgency=medium
+
+  * import 5.8.1.4_36402
+
+ -- jimmy <jimmy@jimmy-alpha>  Tue, 19 May 2020 14:22:20 +0800
+
 rtl8821cu (5.8.1-34171.20200420) unstable; urgency=medium
 
   * fix kernel 5.6 proc_create_data takes "proc_ops" and not "file_operations" now
