@@ -51,7 +51,7 @@ CONFIG_SDIO_HCI = n
 CONFIG_GSPI_HCI = n
 ########################## Features ###########################
 CONFIG_MP_INCLUDED = y
-CONFIG_POWER_SAVING = y
+CONFIG_POWER_SAVING = n
 CONFIG_IPS_MODE = default
 CONFIG_LPS_MODE = default
 CONFIG_USB_AUTOSUSPEND = n
@@ -836,7 +836,7 @@ endif
 ifeq ($(CONFIG_RTL8821C), y)
 RTL871X := rtl8821c
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8821cu
+MODULE_NAME = rtl8821cu
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
 MODULE_NAME = 8821ce
