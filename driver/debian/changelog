@@ -1,9 +1,10 @@
-rtl8821cu (5.8.1.4-36402.20210114) UNRELEASED; urgency=medium
+rtl8821cu (5.8.1.4-36402.20210303) UNRELEASED; urgency=medium
 
   * fix kernel 5.8
   * fix dkms for kernel version
+  * add CONFIG_PLATFORM_ARM_RPI3
 
- -- coolshou <coolshou2060@gmail.com>  Mon, 11 Jan 2021 10:59:28 +0800
+ -- coolshou <coolshou2060@gmail.com>  Wed, 03 Mar 2021 16:53:58 +0800
 
 rtl8821cu (5.8.1.4-36402.20200602) unstable; urgency=medium
 
