@@ -26,7 +26,7 @@ const char *const glbt_info_src_8821c_2ant[] = {
 	"BT Info[bt auto report]",
 };
 
-u32 glcoex_ver_date_8821c_2ant = 20190509;
+u32 glcoex_ver_date_8821c_2ant = 20200616;
 u32 glcoex_ver_8821c_2ant = 0x41;
 u32 glcoex_ver_btdesired_8821c_2ant = 0x39;
 
@@ -380,11 +380,12 @@ halbtc8821c2ant_set_tdma_timer_base(struct btc_coexist *btc, u8 type)
 	BTC_TRACE(trace_buf);
 
 	/* Add for JIRA coex-256 */
-	if (type == 3) { /* 4-slot  */
+	if (type == 3 && tbtt_interval >= 100) { /* 4-slot  */
 		if (coex_sta->tdma_timer_base == 3)
 			return;
-
-		h2c_para[1] = 0xc1; /* 4-slot */
+		
+		h2c_para[1] = (tbtt_interval / 50) - 1;
+		h2c_para[1] = h2c_para[1] | 0xc0; /* 50ms-slot */
 		coex_sta->tdma_timer_base = 3;
 	} else if (tbtt_interval < 80 && tbtt_interval > 0) {
 		if (coex_sta->tdma_timer_base == 2)
@@ -3202,9 +3203,9 @@ void halbtc8821c2ant_action_a2dp(struct btc_coexist *btc)
 	halbtc8821c2ant_table(btc, NM_EXCU, 8);
 
 	if (BTC_RSSI_HIGH(wifi_rssi_state))
-		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 119);
+		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 119 | TDMA_4SLOT);
 	else
-		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 101);
+		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 101 | TDMA_4SLOT);
 }
 
 static
@@ -3386,7 +3387,7 @@ void halbtc8821c2ant_action_wifi_linkscan(struct btc_coexist *btc)
 	if (bt_link_info->pan_exist)
 		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 22);
 	else if (bt_link_info->a2dp_exist)
-		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 16);
+		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 119 | TDMA_4SLOT);
 	else
 		halbtc8821c2ant_tdma(btc, NM_EXCU, TRUE, 21);
 }
@@ -3552,7 +3553,7 @@ void halbtc8821c2ant_action_wifi_multiport2g(struct btc_coexist *btc)
 			    "[BTCoex], wifi_multiport2g, BT idle!!\n");
 		BTC_TRACE(trace_buf);
 
-		halbtc8821c2ant_table(btc, NM_EXCU, 4);
+		halbtc8821c2ant_table(btc, NM_EXCU, 0);
 		halbtc8821c2ant_tdma(btc, NM_EXCU, FALSE, 0);
 
 #if 0
@@ -3738,8 +3739,7 @@ void halbtc8821c2ant_run_coex(struct btc_coexist *btc,  u8 reason)
 			    "[BTCoex], WiFi is under scc-2g/mcc-2g/p2pGO-only!!!\n");
 		BTC_TRACE(trace_buf);
 
-		if (btc->wifi_link_info.link_mode ==
-							BTC_LINK_ONLY_GO)
+		if (btc->wifi_link_info.link_mode == BTC_LINK_ONLY_GO)
 			coex_sta->wl_coex_mode = BT_8821C_2ANT_WLINK_2GGO;
 		else
 			coex_sta->wl_coex_mode = BT_8821C_2ANT_WLINK_2GMPORT;
@@ -4493,12 +4493,13 @@ void ex_halbtc8821c2ant_display_coex_info(struct btc_coexist *btc)
 
 	ps_tdma_case = coex_dm->cur_ps_tdma;
 	CL_SPRINTF(cli_buf, BT_TMP_BUF_SIZE,
-		   "\r\n %-35s = %02x %02x %02x %02x %02x (case-%d, %s)",
+		   "\r\n %-35s = %02x %02x %02x %02x %02x (case-%d, %s, timer-base = %d)",
 		   "TDMA",
 		   coex_dm->ps_tdma_para[0], coex_dm->ps_tdma_para[1],
 		   coex_dm->ps_tdma_para[2], coex_dm->ps_tdma_para[3],
 		   coex_dm->ps_tdma_para[4], ps_tdma_case,
-		   (coex_dm->cur_ps_tdma_on ? "TDMA-On" : "TDMA-Off"));
+		   (coex_dm->cur_ps_tdma_on ? "TDMA-On" : "TDMA-Off"),
+		    coex_sta->tdma_timer_base);
 	CL_PRINTF(cli_buf);
 
 	switch (coex_sta->wl_coex_mode) {

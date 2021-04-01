@@ -141,7 +141,7 @@ static void Hal_EfuseParseBTCoexistInfo(PADAPTER adapter, u8 *map, u8 mapvalid)
 	if ((mapvalid == _TRUE) && (map[EEPROM_RF_BOARD_OPTION_8821C] != 0xFF)) {
 
 		tmp_u32 = rtw_read32(adapter, REG_WL_BT_PWR_CTRL_8821C);
-		/* 0xc1[7:5] = 0x01 */
+		/* 0xc1[7:5] = 0x01 (Combo card) */
 		if ((((map[EEPROM_RF_BOARD_OPTION_8821C] & 0xe0) >> 5) == 0x01) && (tmp_u32 & BIT_BT_FUNC_EN_8821C))
 			hal->EEPROMBluetoothCoexist = _TRUE;
 		else
@@ -153,8 +153,10 @@ static void Hal_EfuseParseBTCoexistInfo(PADAPTER adapter, u8 *map, u8 mapvalid)
 
 	setting = map[EEPROM_RF_BT_SETTING_8821C];
 	if ((_TRUE == mapvalid) && (setting != 0xFF)) {
-		/*Bit[0]: Total antenna number
-			0: 2-Antenna / 1: 1-Antenna	*/
+		/* Bit[0]: Total antenna number
+		 * 0: 2-Antenna (WL BT not share Ant, concurrent mode)
+		 * 1: 1-Antenna (WL BT share Ant, TDMA mode)
+		 */
 		hal->EEPROMBluetoothAntNum = setting & BIT(0);
 		/*
 		 * Bit[6]: One-Ant structure use Ant2(aux.) path or Ant1(main) path
@@ -221,7 +223,7 @@ static void Hal_EfuseParseAntennaDiversity(PADAPTER adapter, u8 *map, u8 mapvali
 	struct registry_priv *registry_par = &adapter->registrypriv;
 
 
-	if (hal->EEPROMBluetoothAntNum == Ant_x1)
+	if (hal->EEPROMBluetoothCoexist == _TRUE && hal->EEPROMBluetoothAntNum == Ant_x1)
 		hal->AntDivCfg = 0;
 	else {
 		if (registry_par->antdiv_cfg == 2)/* 0:OFF , 1:ON, 2:By EFUSE */
@@ -232,7 +234,7 @@ static void Hal_EfuseParseAntennaDiversity(PADAPTER adapter, u8 *map, u8 mapvali
 	/*hal->TRxAntDivType = S0S1_TRX_HW_ANTDIV;*/
 	hal->with_extenal_ant_switch = ((map[EEPROM_RF_BT_SETTING_8821C] & BIT7) >> 7);
 
-	RTW_INFO("%s:EEPROM AntDivCfg=%d, AntDivType=%d, extenal_ant_switch:%d\n",
+	RTW_INFO("%s:EEPROM AntDivCfg=%d, AntDivType=%d, external_ant_switch:%d\n",
 		 __func__, hal->AntDivCfg, hal->TRxAntDivType, hal->with_extenal_ant_switch);
 #endif /* CONFIG_ANTENNA_DIVERSITY */
 }
@@ -610,14 +612,11 @@ static void xmit_status_check(PADAPTER p)
 			else {
 				diff_time = rtw_get_passing_time_ms(psrtpriv->last_tx_complete_time);
 				if (diff_time > 4000) {
-					u32 ability = 0;
-
-					ability = rtw_phydm_ability_get(p);
 
 					RTW_INFO("%s tx hang %s\n", __FUNCTION__,
-						(ability & ODM_BB_ADAPTIVITY) ? "ODM_BB_ADAPTIVITY" : "");
+						(rtw_odm_adaptivity_needed(p)) ? "ODM_BB_ADAPTIVITY" : "");
 
-					if (!(ability & ODM_BB_ADAPTIVITY)) {
+					if (!rtw_odm_adaptivity_needed(p)) {
 						psrtpriv->self_dect_tx_cnt++;
 						psrtpriv->self_dect_case = 1;
 						rtw_hal_sreset_reset(p);

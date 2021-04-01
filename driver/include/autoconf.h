@@ -44,7 +44,7 @@
 #endif
 
 #ifdef CONFIG_80211N_HT
-	 #define CONFIG_BEAMFORMING 
+	/* #define CONFIG_BEAMFORMING */
 #endif
 
 /* set CONFIG_IOCTL_CFG80211 from Makefile */
@@ -173,7 +173,7 @@
 
 #define CONFIG_RTW_LED
 #ifdef CONFIG_RTW_LED
-	#define CONFIG_RTW_SW_LED
+//	#define CONFIG_RTW_SW_LED
 	#ifdef CONFIG_RTW_SW_LED
 		/* #define CONFIG_RTW_LED_HANDLED_BY_CMD_THREAD */
 	#endif
@@ -297,9 +297,6 @@
 #ifdef CONFIG_USB_TX_AGGREGATION
 /* #define	CONFIG_TX_EARLY_MODE */
 #endif
-
-//jimmy, support all 2.4G/5G channel
-#define CONFIG_DISABLE_REGD_C
 
 /*
  * Debug Related Config

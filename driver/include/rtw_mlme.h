@@ -973,7 +973,11 @@ struct mlme_priv {
 	_workitem	Linkup_workitem;
 	_workitem	Linkdown_workitem;
 #endif
+
+#ifdef RTW_BUSY_DENY_SCAN
 	systime lastscantime;
+#endif
+
 #ifdef CONFIG_CONCURRENT_MODE
 	u8	scanning_via_buddy_intf;
 #endif

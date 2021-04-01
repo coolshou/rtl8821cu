@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -203,8 +203,8 @@ void rtw_mi_xmit_tasklet_schedule(_adapter *padapter);
 void rtw_mi_buddy_xmit_tasklet_schedule(_adapter *padapter);
 #endif
 
-u8 rtw_mi_busy_traffic_check(_adapter *padapter, bool check_sc_interval);
-u8 rtw_mi_buddy_busy_traffic_check(_adapter *padapter, bool check_sc_interval);
+u8 rtw_mi_busy_traffic_check(_adapter *padapter);
+u8 rtw_mi_buddy_busy_traffic_check(_adapter *padapter);
 
 u8 rtw_mi_check_mlmeinfo_state(_adapter *padapter, u32 state);
 u8 rtw_mi_buddy_check_mlmeinfo_state(_adapter *padapter, u32 state);

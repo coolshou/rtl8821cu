@@ -516,17 +516,24 @@ u8 rtw_update_rate_bymode(WLAN_BSSID_EX *pbss_network, u32 mode)
 			pbss_network->IELength -= ie_len;
 		}
 		network_type = WIRELESS_11B;
-	} else if ((mode & WIRELESS_11B) == 0) {
-		/* Remove CCK in support_rate IE */
-		rtw_filter_suppport_rateie(pbss_network, OFDM);
-		if (pbss_network->Configuration.DSConfig > 14)
+	} else {
+		if (pbss_network->Configuration.DSConfig > 14) {
+			/* Remove CCK in support_rate IE */
+			rtw_filter_suppport_rateie(pbss_network, OFDM);
 			network_type = WIRELESS_11A;
-		else
-			network_type = WIRELESS_11G;
-	} else
-		network_type = WIRELESS_11BG;		/*	do nothing	*/
+		} else {
+			if ((mode & WIRELESS_11B) == 0) {
+				/* Remove CCK in support_rate IE */
+				rtw_filter_suppport_rateie(pbss_network, OFDM);
+				network_type = WIRELESS_11G;
+			} else {
+				network_type = WIRELESS_11BG;
+			}
+		}
+	}
 
 	rtw_set_supported_rate(pbss_network->SupportedRates, network_type);
+
 	return network_type;
 }
 

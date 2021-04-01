@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -801,7 +801,7 @@ unsigned int is_ap_in_tkip(_adapter *padapter);
 unsigned int is_ap_in_wep(_adapter *padapter);
 unsigned int should_forbid_n_rate(_adapter *padapter);
 
-void parsing_eapol_packet(_adapter *padapter, u8 *key_payload, struct sta_info *psta, u8 trx_type);
+enum eap_type parsing_eapol_packet(_adapter *padapter, u8 *key_payload, struct sta_info *psta, u8 trx_type);
 
 bool _rtw_camctl_chk_cap(_adapter *adapter, u8 cap);
 void _rtw_camctl_set_flags(_adapter *adapter, u32 flags);
@@ -823,6 +823,7 @@ u8 rtw_get_sec_camid(_adapter *adapter, u8 max_bk_key_num, u8 *sec_key_id);
 
 struct macid_bmp;
 struct macid_ctl_t;
+bool _rtw_macid_ctl_chk_cap(_adapter *adapter, u8 cap);
 void dump_macid_map(void *sel, struct macid_bmp *map, u8 max_num);
 bool rtw_macid_is_set(struct macid_bmp *map, u8 id);
 void rtw_macid_map_clr(struct macid_bmp *map, u8 id);
@@ -842,8 +843,10 @@ void rtw_macid_ctl_set_rate_bmp0(struct macid_ctl_t *macid_ctl, u8 id, u32 bmp);
 void rtw_macid_ctl_set_rate_bmp1(struct macid_ctl_t *macid_ctl, u8 id, u32 bmp);
 #ifdef CONFIG_PROTSEL_MACSLEEP
 void rtw_macid_ctl_init_sleep_reg(struct macid_ctl_t *macid_ctl, u16 reg_ctrl, u16 reg_info);
+void rtw_macid_ctl_init_drop_reg(struct macid_ctl_t *macid_ctl, u16 reg_ctrl, u16 reg_info);
 #else
 void rtw_macid_ctl_init_sleep_reg(struct macid_ctl_t *macid_ctl, u16 m0, u16 m1, u16 m2, u16 m3);
+void rtw_macid_ctl_init_drop_reg(struct macid_ctl_t *macid_ctl, u16 m0, u16 m1, u16 m2, u16 m3);
 #endif
 void rtw_macid_ctl_init(struct macid_ctl_t *macid_ctl);
 void rtw_macid_ctl_deinit(struct macid_ctl_t *macid_ctl);
@@ -1076,11 +1079,19 @@ void rtw_join_done_chk_ch(_adapter *padapter, int join_res);
 
 int rtw_chk_start_clnt_join(_adapter *padapter, u8 *ch, u8 *bw, u8 *offset);
 
+#ifdef RTW_BUSY_DENY_SCAN
+#ifndef BUSY_TRAFFIC_SCAN_DENY_PERIOD
+#ifdef CONFIG_ANDROID
 #ifdef CONFIG_PLATFORM_ARM_SUN8I
 	#define BUSY_TRAFFIC_SCAN_DENY_PERIOD	8000
 #else
 	#define BUSY_TRAFFIC_SCAN_DENY_PERIOD	12000
 #endif
+#else /* !CONFIG_ANDROID */
+#define BUSY_TRAFFIC_SCAN_DENY_PERIOD	16000
+#endif /* !CONFIG_ANDROID */
+#endif /* !BUSY_TRAFFIC_SCAN_DENY_PERIOD */
+#endif /* RTW_BUSY_DENY_SCAN */
 
 struct cmd_hdl {
 	uint	parmsize;

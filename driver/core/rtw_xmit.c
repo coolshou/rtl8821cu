@@ -859,9 +859,9 @@ static void update_attrib_vcs_info(_adapter *padapter, struct xmit_frame *pxmitf
 #ifdef CONFIG_WMMPS_STA
 /*
  * update_attrib_trigger_frame_info
- * For Station mode, if a specific TID of driver setting and an AP support uapsd function, the data 
+ * For Station mode, if a specific TID of driver setting and an AP support uapsd function, the data
  * frame with corresponding TID will be a trigger frame when driver is in wmm power saving mode.
- * 
+ *
  * Arguments:
  * @padapter: _adapter pointer.
  * @pattrib: pkt_attrib pointer.
@@ -871,7 +871,7 @@ static void update_attrib_vcs_info(_adapter *padapter, struct xmit_frame *pxmitf
  */
 static void update_attrib_trigger_frame_info(_adapter *padapter, struct pkt_attrib *pattrib) {
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
-	struct pwrctrl_priv 	*pwrpriv = adapter_to_pwrctl(padapter); 
+	struct pwrctrl_priv 	*pwrpriv = adapter_to_pwrctl(padapter);
 	struct qos_priv 	*pqospriv = &pmlmepriv->qospriv;
 	u8 trigger_frame_en = 0;
 
@@ -962,7 +962,7 @@ static void update_attrib_phy_info(_adapter *padapter, struct pkt_attrib *pattri
 	pattrib->retry_ctrl = _FALSE;
 }
 
-static s32 update_attrib_sec_info(_adapter *padapter, struct pkt_attrib *pattrib, struct sta_info *psta)
+static s32 update_attrib_sec_info(_adapter *padapter, struct pkt_attrib *pattrib, struct sta_info *psta, enum eap_type eapol_type)
 {
 	sint res = _SUCCESS;
 	struct mlme_priv	*pmlmepriv = &padapter->mlmepriv;
@@ -973,7 +973,22 @@ static s32 update_attrib_sec_info(_adapter *padapter, struct pkt_attrib *pattrib
 	_rtw_memset(pattrib->dot11tkiptxmickey.skey,  0, 16);
 	pattrib->mac_id = psta->cmn.mac_id;
 
-	if (psta->ieee8021x_blocked == _TRUE) {
+	/* Comment by Owen at 2020/05/19
+	 * Issue: RTK STA sends encrypted 4-way 4/4 when AP thinks the 4-way incomplete
+	 * In TCL pressure test, AP may resend 4-way 3/4 with new replay counter in 2 ms.
+	 * In this situation, STA sends unencrypted 4-way 4/4 with old replay counter after more
+	 * than 2 ms, followed by the encrypted 4-way 4/4 with new replay counter. Because the
+	 * AP only accepts unencrypted 4-way 4/4 with a new play counter, and the STA encrypts
+	 * each 4-way 4/4 at this time, the 4-way handshake cannot be completed.
+	 * So we modified that after STA receives unencrypted 4-way 1/4 and 4-way 3/4,
+	 * 4-way 2/4 and 4-way 4/4 sent by STA in the next 100 ms are not encrypted.
+	 */
+	if (psta->ieee8021x_blocked == _TRUE ||
+		((eapol_type == EAPOL_2_4 || eapol_type == EAPOL_4_4) &&
+		rtw_get_passing_time_ms(psta->resp_nonenc_eapol_key_starttime) <= 100)) {
+
+		if (eapol_type == EAPOL_2_4 || eapol_type == EAPOL_4_4)
+			RTW_INFO("Respond unencrypted eapol key\n");
 
 		pattrib->encrypt = 0;
 
@@ -1288,7 +1303,7 @@ s32 update_tdls_attrib(_adapter *padapter, struct pkt_attrib *pattrib)
 	}
 
 	/* TODO:_lock */
-	if (update_attrib_sec_info(padapter, pattrib, psta) == _FAIL) {
+	if (update_attrib_sec_info(padapter, pattrib, psta, NON_EAPOL) == _FAIL) {
 		res = _FAIL;
 		goto exit;
 	}
@@ -1359,6 +1374,7 @@ static s32 update_attrib(_adapter *padapter, _pkt *pkt, struct pkt_attrib *pattr
 	struct qos_priv		*pqospriv = &pmlmepriv->qospriv;
 	struct xmit_priv		*pxmitpriv = &padapter->xmitpriv;
 	sint res = _SUCCESS;
+	enum eap_type eapol_type = NON_EAPOL;
 #ifdef CONFIG_LPS
 	u8 pkt_type = 0;
 #endif
@@ -1509,7 +1525,7 @@ get_sta_info:
 		}
 
 	} else if (0x888e == pattrib->ether_type)
-		parsing_eapol_packet(padapter, pktfile.cur_addr, psta, 1);
+		eapol_type = parsing_eapol_packet(padapter, pktfile.cur_addr, psta, 1);
 #if defined (DBG_ARP_DUMP) || defined (DBG_IP_R_MONITOR)
 	else if (pattrib->ether_type == ETH_P_ARP) {
 		u8 arp[28] = {0};
@@ -1544,7 +1560,7 @@ get_sta_info:
 #endif
 
 	/* TODO:_lock */
-	if (update_attrib_sec_info(padapter, pattrib, psta) == _FAIL) {
+	if (update_attrib_sec_info(padapter, pattrib, psta, eapol_type) == _FAIL) {
 		DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_sec);
 		res = _FAIL;
 		goto exit;
@@ -1584,7 +1600,7 @@ get_sta_info:
 			}
 		}
 	}
-	
+
 	update_attrib_phy_info(padapter, pattrib, psta);
 
 	/* RTW_INFO("%s ==> mac_id(%d)\n",__FUNCTION__,pattrib->mac_id ); */
@@ -1607,7 +1623,7 @@ get_sta_info:
 
 #ifdef CONFIG_WMMPS_STA
 	update_attrib_trigger_frame_info(padapter, pattrib);
-#endif /* CONFIG_WMMPS_STA */	
+#endif /* CONFIG_WMMPS_STA */
 
 	/* pattrib->priority = 5; */ /* force to used VI queue, for testing */
 	pattrib->hw_ssn_sel = pxmitpriv->hw_ssn_seq_no;
@@ -1910,7 +1926,7 @@ s32 rtw_make_wlanhdr(_adapter *padapter , u8 *hdr, struct pkt_attrib *pattrib)
 				/* TBD: temporary set (rspi, eosp) = (0, 1) which means End MPSP */
 				set_rspi(qc, 0);
 				SetEOSP(qc, 1);
-				
+
 				set_mctrl_present(qc, 1);
 			}
 #endif
@@ -4457,8 +4473,12 @@ s32 rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *ndev)
 	u8 dummybuf[32];
 	int len = skb->len, rtap_len;
 
-
-	rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, skb->truesize);
+//	rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, skb->truesize);
+#ifdef CONFIG_MONITOR_MODE_XMIT
+    int consume;
+#endif  /* CONFIG_MONITOR_MODE_XMIT */
+	if (likely(skb))
+		rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, skb->truesize);
 
 #ifndef CONFIG_CUSTOMER_ALIBABA_GENERAL
 	if (unlikely(skb->len < sizeof(struct ieee80211_radiotap_header)))
@@ -4473,13 +4493,25 @@ s32 rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *ndev)
 	if (unlikely(skb->len < rtap_len))
 		goto fail;
 
+#ifdef CONFIG_MONITOR_MODE_XMIT
+	len -= sizeof(struct ieee80211_radiotap_header);
+	rtap_len -= sizeof(struct ieee80211_radiotap_header);
+
+	while(rtap_len) {
+		consume = rtap_len > sizeof(dummybuf) ? sizeof(dummybuf) : rtap_len;
+		_rtw_pktfile_read(&pktfile, dummybuf, consume);
+		rtap_len -= consume;
+		len -= consume;
+	}
+#else /* CONFIG_MONITOR_MODE_XMIT */
 	if (rtap_len != 12) {
 		RTW_INFO("radiotap len (should be 14): %d\n", rtap_len);
 		goto fail;
 	}
 	_rtw_pktfile_read(&pktfile, dummybuf, rtap_len-sizeof(struct ieee80211_radiotap_header));
 	len = len - rtap_len;
-#endif
+#endif /* CONFIG_MONITOR_MODE_XMIT */
+#endif /* CONFIG_CUSTOMER_ALIBABA_GENERAL */
 	pmgntframe = alloc_mgtxmitframe(pxmitpriv);
 	if (pmgntframe == NULL) {
 		rtw_udelay_os(500);
@@ -4519,6 +4551,9 @@ s32 rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *ndev)
 	dump_mgntframe(padapter, pmgntframe);
 
 fail:
+#ifdef CONFIG_MONITOR_MODE_XMIT
+	rtw_endofpktfile(&pktfile);
+#endif /* CONFIG_MONITOR_MODE_XMIT */
 	rtw_skb_free(skb);
 	return 0;
 }

@@ -1455,9 +1455,7 @@ u8 _rtw_sitesurvey_condition_check(const char *caller, _adapter *adapter, bool c
 {
 	u8 ss_condition = SS_ALLOW;
 	struct mlme_priv *pmlmepriv = &adapter->mlmepriv;
-#ifdef DBG_LA_MODE
 	struct registry_priv *registry_par = &adapter->registrypriv;
-#endif
 
 #ifdef CONFIG_MP_INCLUDED
 	if (rtw_mp_mode_check(adapter)) {
@@ -1545,27 +1543,26 @@ u8 _rtw_sitesurvey_condition_check(const char *caller, _adapter *adapter, bool c
 	}
 #endif /* CONFIG_CONCURRENT_MODE */
 
-	if (pmlmepriv->LinkDetectInfo.bBusyTraffic == _TRUE) {
-		RTW_INFO("%s ("ADPT_FMT") : scan abort!! BusyTraffic\n",
-			 caller, ADPT_ARG(adapter));
-		ss_condition = SS_DENY_BUSY_TRAFFIC;
-		goto _exit;
-	}
+#ifdef RTW_BUSY_DENY_SCAN
 	/*
-	 * Rule for Android.
-	 * If scan interval > BUSY_TRAFFIC_SCAN_DENY_PERIOD,
-	 * it is a periodical background scan.
-	 * Skip background scan when other interface is busy.
+	 * busy traffic check
+	 * Rules:
+	 * 1. If (scan interval <= BUSY_TRAFFIC_SCAN_DENY_PERIOD) always allow
+	 *    scan, otherwise goto rule 2.
+	 * 2. Deny scan if any interface is busy, otherwise allow scan.
 	 */
-	if ((rtw_get_passing_time_ms(pmlmepriv->lastscantime) > BUSY_TRAFFIC_SCAN_DENY_PERIOD)
-	    && rtw_mi_buddy_busy_traffic_check(adapter, _FALSE)) {
-		RTW_INFO("%s ("ADPT_FMT") : scan abort!! others BusyTraffic\n",
+	if (pmlmepriv->lastscantime
+	    && (rtw_get_passing_time_ms(pmlmepriv->lastscantime) >
+		registry_par->scan_interval_thr)
+	    && rtw_mi_busy_traffic_check(adapter)) {
+		RTW_WARN("%s ("ADPT_FMT") : scan abort!! BusyTraffic\n",
 			 caller, ADPT_ARG(adapter));
 		ss_condition = SS_DENY_BUSY_TRAFFIC;
 		goto _exit;
 	}
+#endif /* RTW_BUSY_DENY_SCAN */
 
-_exit :
+_exit:
 	return ss_condition;
 }
 
@@ -2764,6 +2761,7 @@ void rtw_sta_mstatus_disc_rpt(_adapter *adapter, u8 mac_id)
 			, mac_id, id_is_shared ? " shared" : "");
 
 		if (!id_is_shared) {
+			rtw_hal_macid_drop(adapter, mac_id);
 			rtw_hal_set_FwMediaStatusRpt_single_cmd(adapter, 0, 0, 0, 0, mac_id);
 			/*
 			 * For safety, prevent from keeping macid sleep.
@@ -3129,8 +3127,10 @@ void rtw_drv_scan_by_self(_adapter *padapter, u8 reason)
 			RTW_INFO(FUNC_ADPT_FMT" need to roam, don't care BusyTraffic\n", FUNC_ADPT_ARG(padapter));
 		else
 		#endif
+		{
 			RTW_INFO(FUNC_ADPT_FMT" exit BusyTraffic\n", FUNC_ADPT_ARG(padapter));
 			goto exit;
+		}
 	}
 	else if (ssc_chk != SS_ALLOW)
 		goto exit;
@@ -3144,7 +3144,7 @@ void rtw_drv_scan_by_self(_adapter *padapter, u8 reason)
 	if (!rtw_is_adapter_up(padapter))
 		goto exit;
 
-	if (rtw_mi_busy_traffic_check(padapter, _FALSE)) {
+	if (rtw_mi_busy_traffic_check(padapter)) {
 #ifdef CONFIG_LAYER2_ROAMING
 		if (rtw_chk_roam_flags(padapter, RTW_ROAM_ACTIVE) && pmlmepriv->need_to_roam == _TRUE) {
 			RTW_INFO("need to roam, don't care BusyTraffic\n");

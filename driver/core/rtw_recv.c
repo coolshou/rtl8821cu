@@ -2705,13 +2705,14 @@ static int rtw_recv_indicatepkt_check(union recv_frame *rframe, u8 *ehdr_pos, u3
 	_adapter *adapter = rframe->u.hdr.adapter;
 	struct recv_priv *recvpriv = &adapter->recvpriv;
 	struct ethhdr *ehdr = (struct ethhdr *)ehdr_pos;
+	struct rx_pkt_attrib *pattrib = &rframe->u.hdr.attrib;
 #ifdef DBG_IP_R_MONITOR
 	int i;
-	struct rx_pkt_attrib *pattrib = &rframe->u.hdr.attrib;
 	struct mlme_ext_priv *pmlmeext = &adapter->mlmeextpriv;
 	struct mlme_priv	*pmlmepriv = &adapter->mlmepriv;
 	struct wlan_network *cur_network = &(pmlmepriv->cur_network);
 #endif/*DBG_IP_R_MONITOR*/
+	enum eap_type eapol_type;
 	int ret = _FAIL;
 
 #ifdef CONFIG_WAPI_SUPPORT
@@ -2727,8 +2728,13 @@ static int rtw_recv_indicatepkt_check(union recv_frame *rframe, u8 *ehdr_pos, u3
 	if (rframe->u.hdr.psta)
 		rtw_st_ctl_rx(rframe->u.hdr.psta, ehdr_pos);
 
-	if (ntohs(ehdr->h_proto) == 0x888e)
-		parsing_eapol_packet(adapter, ehdr_pos + ETH_HLEN, rframe->u.hdr.psta, 0);
+	if (ntohs(ehdr->h_proto) == 0x888e) {
+		eapol_type = parsing_eapol_packet(adapter, ehdr_pos + ETH_HLEN, rframe->u.hdr.psta, 0);
+		if ((eapol_type == EAPOL_1_4 || eapol_type == EAPOL_3_4) && pattrib->encrypt == 0) {
+			rframe->u.hdr.psta->resp_nonenc_eapol_key_starttime = rtw_get_current_time();
+			RTW_INFO("Receive unencrypted eapol key\n");
+		}
+	}
 #ifdef DBG_ARP_DUMP
 	else if (ntohs(ehdr->h_proto) == ETH_P_ARP)
 		dump_arp_pkt(RTW_DBGDUMP, ehdr->h_dest, ehdr->h_source, ehdr_pos + ETH_HLEN, 0);
@@ -3876,7 +3882,7 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 
 	u8 data_rate[] = {
 		2, 4, 11, 22, /* CCK */
-		12, 18, 24, 36, 48, 72, 93, 108, /* OFDM */
+		12, 18, 24, 36, 48, 72, 96, 108, /* OFDM */
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, /* HT MCS index */
 		16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* VHT Nss 1 */
@@ -3921,9 +3927,10 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	if (pattrib->mfrag)
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FRAG;
 
-	/* always append FCS */
-	hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FCS;
-
+#ifdef CONFIG_RX_PACKET_APPEND_FCS
+	if (rtw_hal_rcr_check(padapter, BIT_APP_FCS_8821C))
+		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FCS;
+#endif
 
 	if (0)
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_DATAPAD;
@@ -3959,11 +3966,20 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	rt_len += 2;
 
 	/* channel flags */
-	tmp_16bit = 0;
-	if (pHalData->current_band_type == BAND_ON_2_4G)
-		tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_2GHZ);
-	else /*BAND_ON_5G*/
-		tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_5GHZ);
+	// NOTE: tmp_16bit currently contains channel freq; we overwrite the value
+	// to reflect channel flags.
+	if (pHalData->current_band_type == BAND_ON_2_4G){
+		tmp_16bit = cpu_to_le16(IEEE80211_CHAN_2GHZ);
+	}
+	else if (pHalData->current_band_type == BAND_ON_5G)
+		tmp_16bit = cpu_to_le16(IEEE80211_CHAN_5GHZ);
+	else { // BAND_ON_BOTH; decide based on frequency
+		if (tmp_16bit >= 5000) {
+			tmp_16bit = cpu_to_le16(IEEE80211_CHAN_5GHZ);
+		} else {
+			tmp_16bit = cpu_to_le16(IEEE80211_CHAN_2GHZ);
+		}
+	}
 
 	if (pattrib->data_rate <= DESC_RATE54M) {
 		if (pattrib->data_rate <= DESC_RATE11M) {

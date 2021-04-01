@@ -18,6 +18,15 @@
 #include "hal_ic_cfg.h"
 
 #define CONFIG_RSSI_PRIORITY
+
+/*
+ * RTW_BUSY_DENY_SCAN control if scan would be denied by busy traffic.
+ * When this defined, BUSY_TRAFFIC_SCAN_DENY_PERIOD would be used to judge if
+ * scan request coming from scan UI. Scan request from scan UI would be
+ * exception and never be denied by busy traffic.
+ */
+#define RTW_BUSY_DENY_SCAN
+
 #ifdef CONFIG_RTW_REPEATER_SON
 	#ifndef CONFIG_AP
 		#define CONFIG_AP
@@ -119,7 +128,7 @@
 #endif
 
 #ifdef CONFIG_WIFI_MONITOR
-	/*	#define CONFIG_MONITOR_MODE_XMIT	*/
+	#define CONFIG_MONITOR_MODE_XMIT
 #endif
 
 #ifdef CONFIG_CUSTOMER_ALIBABA_GENERAL
@@ -377,7 +386,7 @@ defined(CONFIG_RTL8723B) || defined(CONFIG_RTL8703B) || defined(CONFIG_RTL8723D)
 #define CONFIG_HWMPCAP_GEN3
 #endif
 
-#if defined(CONFIG_HWMPCAP_GEN1) && (CONFIG_IFACE_NUMBER > 2) 
+#if defined(CONFIG_HWMPCAP_GEN1) && (CONFIG_IFACE_NUMBER > 2)
 	#ifdef CONFIG_POWER_SAVING
 	/*#warning "Disable PS when CONFIG_IFACE_NUMBER > 2"*/
 	#undef CONFIG_POWER_SAVING
@@ -531,7 +540,7 @@ defined(CONFIG_RTL8723B) || defined(CONFIG_RTL8703B) || defined(CONFIG_RTL8723D)
 		#define RTW_LPS_MODE 1
 	#else
 		#define RTW_LPS_MODE 0
-	#endif 
+	#endif
 #endif /* !RTW_LPS_MODE */
 
 #if (RTW_LPS_MODE > 3 || RTW_LPS_MODE < 0)
@@ -572,11 +581,11 @@ defined(CONFIG_RTL8723B) || defined(CONFIG_RTL8703B) || defined(CONFIG_RTL8723D)
 	#endif
 #endif
 
-#define CONFIG_RTW_TPT_MODE 
+#define CONFIG_RTW_TPT_MODE
 
 #ifdef CONFIG_PCI_BCN_POLLING
 #define CONFIG_BCN_ICF
-#endif 
+#endif
 
 #ifndef CONFIG_PCI_MSI
 #define CONFIG_RTW_PCI_MSI_DISABLE

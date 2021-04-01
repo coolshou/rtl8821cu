@@ -38,9 +38,6 @@
 void	PlatformClearPciPMEStatus(PADAPTER Adapter);
 void	rtw_pci_aspm_config(_adapter *padapter);
 void	rtw_pci_aspm_config_l1off_general(_adapter *padapter, u8 eanble);
-#ifdef CONFIG_64BIT_DMA
-	u8	PlatformEnableDMA64(PADAPTER Adapter);
-#endif
 #ifdef CONFIG_PCI_DYNAMIC_ASPM
 void rtw_pci_set_aspm_lnkctl(_adapter *padapter, u8 mode);
 void rtw_pci_set_l1_latency(_adapter *padapter, u8 mode);

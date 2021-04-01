@@ -101,7 +101,7 @@ u8	null_addr[ETH_ALEN] = {0, 0, 0, 0, 0, 0};
 OUI definitions for the vendor specific IE
 ***************************************************/
 unsigned char	RTW_WPA_OUI[] = {0x00, 0x50, 0xf2, 0x01};
-unsigned char WMM_OUI[] = {0x00, 0x50, 0xf2, 0x02};
+unsigned char	WMM_OUI[] = {0x00, 0x50, 0xf2, 0x02};
 unsigned char	WPS_OUI[] = {0x00, 0x50, 0xf2, 0x04};
 unsigned char	P2P_OUI[] = {0x50, 0x6F, 0x9A, 0x09};
 unsigned char	WFD_OUI[] = {0x50, 0x6F, 0x9A, 0x0A};
@@ -259,6 +259,7 @@ void rtw_txpwr_init_regd(struct rf_ctl_t *rfctl)
 		);
 		if (rfctl->regd_name)
 			break;
+		/* fall through */
 	default:
 		rfctl->regd_name = regd_str(TXPWR_LMT_WW);
 		RTW_PRINT("assign %s for default case\n", regd_str(TXPWR_LMT_WW));
@@ -713,7 +714,7 @@ bool rtw_choose_shortest_waiting_ch(struct rf_ctl_t *rfctl, u8 sel_ch, u8 max_bw
 					, __func__, ch, bw, offset, waiting_ms, non_ocp_ms, cac_ms);
 
 			if (ch_c == 0
-				/* first: smaller wating time */
+				/* first: smaller waiting time */
 				|| min_waiting_ms > waiting_ms
 				/* then: wider bw */
 				|| (min_waiting_ms == waiting_ms && bw > bw_c)
@@ -1347,7 +1348,7 @@ void mgt_dispatcher(_adapter *padapter, union recv_frame *precv_frame)
 			ptable->func = &OnAuth;
 		else
 			ptable->func = &OnAuthClient;
-	/* pass through */
+	/* fall through */
 	case WIFI_ASSOCREQ:
 	case WIFI_REASSOCREQ:
 		_mgt_dispatcher(padapter, ptable, precv_frame);
@@ -1750,6 +1751,17 @@ unsigned int OnProbeRsp(_adapter *padapter, union recv_frame *precv_frame)
 		|| (padapter->rtw_rson_scanstage == RSON_SCAN_PROCESS)
 		#endif
 	) {
+		struct mlme_ext_info *pmlmeinfo = &(pmlmeext->mlmext_info);
+
+		if (_rtw_memcmp(GetAddr3Ptr(pframe), get_my_bssid(&pmlmeinfo->network), ETH_ALEN)
+			&& (pmlmeinfo->state & 0x03) == WIFI_FW_STATION_STATE && (pmlmeinfo->state & WIFI_FW_ASSOC_SUCCESS)
+		) {
+			if (!rtw_check_bcn_info(padapter, pframe, precv_frame->u.hdr.len)) {
+				RTW_PRINT(FUNC_ADPT_FMT" ap has changed, disconnect now\n", FUNC_ADPT_ARG(padapter));
+				receive_disconnect(padapter, pmlmeinfo->network.MacAddress , 0, _FALSE);
+			}
+		}
+
 		rtw_mi_report_survey_event(padapter, precv_frame);
 		return _SUCCESS;
 	}
@@ -1837,6 +1849,15 @@ unsigned int OnBeacon(_adapter *padapter, union recv_frame *precv_frame)
 	if (mlmeext_chk_scan_state(pmlmeext, SCAN_PROCESS)
 		|| (MLME_IS_MESH(padapter) && check_fwstate(pmlmepriv, WIFI_ASOC_STATE))
 	) {
+		if (_rtw_memcmp(GetAddr3Ptr(pframe), get_my_bssid(&pmlmeinfo->network), ETH_ALEN)
+			&& (pmlmeinfo->state & 0x03) == WIFI_FW_STATION_STATE && (pmlmeinfo->state & WIFI_FW_ASSOC_SUCCESS)
+		) {
+			if (!rtw_check_bcn_info(padapter, pframe, len)) {
+				RTW_PRINT(FUNC_ADPT_FMT" ap has changed, disconnect now\n", FUNC_ADPT_ARG(padapter));
+				receive_disconnect(padapter, pmlmeinfo->network.MacAddress , 0, _FALSE);
+			}
+		}
+
 		rtw_mi_report_survey_event(padapter, precv_frame);
 		return _SUCCESS;
 	}
@@ -1933,7 +1954,7 @@ unsigned int OnBeacon(_adapter *padapter, union recv_frame *precv_frame)
 #endif
 				ret = rtw_check_bcn_info(padapter, pframe, len);
 				if (!ret) {
-					RTW_PRINT("ap has changed, disconnect now\n ");
+					RTW_PRINT(FUNC_ADPT_FMT" ap has changed, disconnect now\n", FUNC_ADPT_ARG(padapter));
 					receive_disconnect(padapter, pmlmeinfo->network.MacAddress , 0, _FALSE);
 					return _SUCCESS;
 				}
@@ -14097,11 +14118,11 @@ u8 disconnect_hdl(_adapter *padapter, unsigned char *pbuf)
 	}
 #endif
 
+	rtw_sta_mstatus_report(padapter);
+	
 	rtw_mlmeext_disconnect(padapter);
 
 	rtw_free_uc_swdec_pending_queue(padapter);
-
-	rtw_sta_mstatus_report(padapter);
 
 	return	H2C_SUCCESS;
 }
@@ -14207,7 +14228,7 @@ u8 rtw_scan_sparse(_adapter *adapter, struct rtw_ieee80211_channel *ch, u8 ch_nu
 	interval = rtw_get_passing_time_ms(mlmeext->last_scan_time);
 
 
-	if (rtw_mi_busy_traffic_check(adapter, _FALSE))
+	if (rtw_mi_busy_traffic_check(adapter))
 		busy_traffic = _TRUE;
 
 	if (rtw_mi_check_miracast_enabled(adapter))
@@ -16087,7 +16108,8 @@ void rtw_join_done_chk_ch(_adapter *adapter, int join_res)
 
 						rtw_cfg80211_ch_switch_notify(iface
 							, mlmeext->cur_channel, mlmeext->cur_bwmode, mlmeext->cur_ch_offset
-							, ht_option, 0);
+							, ht_option
+							, 0);
 						#endif
 					}
 				}

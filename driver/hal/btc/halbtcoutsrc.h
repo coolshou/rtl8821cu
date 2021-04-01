@@ -174,6 +174,8 @@ do {\
 #define		BTC_ANT_WIFI_AT_CPL_MAIN	0
 #define		BTC_ANT_WIFI_AT_CPL_AUX		1
 
+#define		TDMA_4SLOT			BIT(8)
+
 typedef enum _BTC_POWERSAVE_TYPE {
 	BTC_PS_WIFI_NATIVE			= 0,	/* wifi original power save behavior */
 	BTC_PS_LPS_ON				= 1,
@@ -233,14 +235,14 @@ static const char *const glbt_info_src[] = {
 	"BT Info[bt auto report]",
 };
 
-#define BTC_INFO_FTP		BIT(7)
-#define BTC_INFO_A2DP		BIT(6)
-#define BTC_INFO_HID		BIT(5)
+#define BTC_INFO_FTP			BIT(7)
+#define BTC_INFO_A2DP			BIT(6)
+#define BTC_INFO_HID			BIT(5)
 #define BTC_INFO_SCO_BUSY		BIT(4)
 #define BTC_INFO_ACL_BUSY		BIT(3)
 #define BTC_INFO_INQ_PAGE		BIT(2)
 #define BTC_INFO_SCO_ESCO		BIT(1)
-#define BTC_INFO_CONNECTION	BIT(0)
+#define BTC_INFO_CONNECTION		BIT(0)
 
 #define BTC_BTINFO_LENGTH_MAX 10
 

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -2000,7 +2000,7 @@ static int rtw_wx_set_scan(struct net_device *dev, struct iw_request_info *a,
 	/* When Busy Traffic, driver do not site survey. So driver return success. */
 	/* wpa_supplicant will not issue SIOCSIWSCAN cmd again after scan timeout. */
 	/* modify by thomas 2011-02-22. */
-	if (rtw_mi_busy_traffic_check(padapter, _FALSE)) {
+	if (rtw_mi_busy_traffic_check(padapter)) {
 		indicate_wx_scan_complete_event(padapter);
 		goto cancel_ps_deny;
 	}
@@ -3202,7 +3202,7 @@ static int rtw_wx_get_nick(struct net_device *dev,
 	if (extra) {
 		wrqu->data.length = 14;
 		wrqu->data.flags = 1;
-		_rtw_memcpy(extra, "<WIFI@REALTEK>", 14);
+		_rtw_memcpy(extra, "WIFI@RTL8821CU", 14);
 	}
 
 	/* rtw_signal_process(pid, SIGUSR1); */ /* for test */
@@ -9577,7 +9577,7 @@ static int rtw_mp_efuse_set(struct net_device *dev,
 			err = -EFAULT;
 		}
 	} else if (strcmp(tmp[0], "btfk2map") == 0) {
-
+#ifdef CONFIG_BT_EFUSE_MASK
 		if (padapter->registrypriv.bBTFileMaskEfuse != _TRUE && pmp_priv->bloadBTefusemap == _TRUE) {
 			RTW_INFO("%s: File BT eFuse mask file not to be loaded\n", __FUNCTION__);
 			sprintf(extra, "Not load BT eFuse mask file yet, Please advance to use [ efuse_bt_mask ], now remove the Adapter.!!!!\n");
@@ -9585,7 +9585,7 @@ static int rtw_mp_efuse_set(struct net_device *dev,
 			err = 0;
 			goto exit;
 		}
-
+#endif
 		rtw_write8(padapter, 0xa3, 0x05);
 		BTStatus = rtw_read8(padapter, 0xa0);
 		RTW_INFO("%s: btwmap before read 0xa0 BT Status =0x%x\n", __FUNCTION__, BTStatus);
@@ -9611,7 +9611,6 @@ static int rtw_mp_efuse_set(struct net_device *dev,
 		rtw_read8(padapter, EFUSE_CTRL);
 		BTEfuse_PowerSwitch(padapter, 1, _FALSE);
 #endif /* RTW_HALMAC */
-		_rtw_memcpy(pEfuseHal->BTEfuseModifiedMap, pEfuseHal->fakeBTEfuseModifiedMap, EFUSE_BT_MAX_MAP_LEN);
 
 		if (rtw_BT_efuse_map_write(padapter, 0x00, EFUSE_BT_MAX_MAP_LEN, pEfuseHal->fakeBTEfuseModifiedMap) == _FAIL) {
 			RTW_INFO("%s: rtw_BT_efuse_map_write error!\n", __FUNCTION__);

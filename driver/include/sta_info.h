@@ -288,6 +288,7 @@ struct sta_info {
 	u8 rm_diag_token;
 #endif /* CONFIG_RTW_80211K */
 
+	systime	resp_nonenc_eapol_key_starttime;
 	uint	ieee8021x_blocked;	/* 0: allowed, 1:blocked */
 	uint	dot118021XPrivacy; /* aes, tkip... */
 	union Keytype	dot11tkiptxmickey;

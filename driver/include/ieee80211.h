@@ -490,12 +490,21 @@ struct rtw_ieee80211s_hdr {
 } __attribute__((packed));
 #endif
 
+/* Some IEEE 802.11x packet types are corresponding to parsing_eapol_packet() */
 enum eap_type {
 	EAP_PACKET = 0,
+	NON_EAPOL,
 	EAPOL_START,
 	EAPOL_LOGOFF,
 	EAPOL_KEY,
-	EAPOL_ENCAP_ASF_ALERT
+	EAPOL_ENCAP_ASF_ALERT,
+	EAPOL_PACKET,
+	EAPOL_WPA_GROUP_KEY_1_2,
+	EAPOL_WPA_GROUP_KEY_2_2,
+	EAPOL_1_4,
+	EAPOL_2_4,
+	EAPOL_3_4,
+	EAPOL_4_4,
 };
 
 #define IEEE80211_3ADDR_LEN 24
@@ -764,13 +773,13 @@ struct ieee80211_snap_hdr {
 #define IEEE80211_NUM_OFDM_RATESLEN	8
 
 
-#define IEEE80211_CCK_RATE_1MB		        0x02
-#define IEEE80211_CCK_RATE_2MB		        0x04
-#define IEEE80211_CCK_RATE_5MB		        0x0B
-#define IEEE80211_CCK_RATE_11MB		        0x16
-#define IEEE80211_OFDM_RATE_LEN		8
-#define IEEE80211_OFDM_RATE_6MB		        0x0C
-#define IEEE80211_OFDM_RATE_9MB		        0x12
+#define IEEE80211_CCK_RATE_1MB			0x02
+#define IEEE80211_CCK_RATE_2MB			0x04
+#define IEEE80211_CCK_RATE_5MB			0x0B
+#define IEEE80211_CCK_RATE_11MB			0x16
+#define IEEE80211_OFDM_RATE_LEN			8
+#define IEEE80211_OFDM_RATE_6MB			0x0C
+#define IEEE80211_OFDM_RATE_9MB			0x12
 #define IEEE80211_OFDM_RATE_12MB		0x18
 #define IEEE80211_OFDM_RATE_18MB		0x24
 #define IEEE80211_OFDM_RATE_24MB		0x30

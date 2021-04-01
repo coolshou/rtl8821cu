@@ -2756,25 +2756,26 @@ void process_csa_ie(_adapter *padapter, u8 *ies, uint ies_len)
 }
 #endif /* CONFIG_DFS */
 
-void parsing_eapol_packet(_adapter *padapter, u8 *key_payload, struct sta_info *psta, u8 trx_type)
+enum eap_type parsing_eapol_packet(_adapter *padapter, u8 *key_payload, struct sta_info *psta, u8 trx_type)
 {
 	struct security_priv *psecuritypriv = &(padapter->securitypriv);
 	struct ieee802_1x_hdr *hdr;
 	struct wpa_eapol_key *key;
 	u16 key_info, key_data_length;
 	char *trx_msg = trx_type ? "send" : "recv";
+	enum eap_type eapol_type;
 
 	hdr = (struct ieee802_1x_hdr *) key_payload;
 
 	 /* WPS - eapol start packet */
 	if (hdr->type == 1 && hdr->length == 0) {
 		RTW_INFO("%s eapol start packet\n", trx_msg);
-		return;
+		return EAPOL_START;
 	}
 
 	if (hdr->type == 0) { /* WPS - eapol packet */
 		RTW_INFO("%s eapol packet\n", trx_msg);
-		return;
+		return EAPOL_PACKET;
 	}
 
 	key = (struct wpa_eapol_key *) (hdr + 1);
@@ -2784,24 +2785,32 @@ void parsing_eapol_packet(_adapter *padapter, u8 *key_payload, struct sta_info *
 	if (!(key_info & WPA_KEY_INFO_KEY_TYPE)) { /* WPA group key handshake */
 		if (key_info & WPA_KEY_INFO_ACK) {
 			RTW_PRINT("%s eapol packet - WPA Group Key 1/2\n", trx_msg);
+			eapol_type = EAPOL_WPA_GROUP_KEY_1_2;
 		} else {
 			RTW_PRINT("%s eapol packet - WPA Group Key 2/2\n", trx_msg);
+			eapol_type = EAPOL_WPA_GROUP_KEY_2_2;
 
 			/* WPA key-handshake has completed */
 			if (psecuritypriv->ndisauthtype == Ndis802_11AuthModeWPAPSK)
 				psta->state &= (~WIFI_UNDER_KEY_HANDSHAKE);
 		}
 	} else if (key_info & WPA_KEY_INFO_MIC) {
-		if (key_data_length == 0)
+		if (key_data_length == 0) {
 			RTW_PRINT("%s eapol packet 4/4\n", trx_msg);
-		else if (key_info & WPA_KEY_INFO_ACK)
+			eapol_type = EAPOL_4_4;
+		} else if (key_info & WPA_KEY_INFO_ACK) {
 			RTW_PRINT("%s eapol packet 3/4\n", trx_msg);
-		else
+			eapol_type = EAPOL_3_4;
+		} else {
 			RTW_PRINT("%s eapol packet 2/4\n", trx_msg);
+			eapol_type = EAPOL_2_4;
+		}
 	} else {
 		RTW_PRINT("%s eapol packet 1/4\n", trx_msg);
+		eapol_type = EAPOL_1_4;
 	}
 
+	return eapol_type;
 }
 
 unsigned int is_ap_in_tkip(_adapter *padapter)
@@ -3629,6 +3638,16 @@ void beacon_timing_control(_adapter *padapter)
 	rtw_hal_bcn_related_reg_setting(padapter);
 }
 
+inline bool _rtw_macid_ctl_chk_cap(_adapter *adapter, u8 cap)
+{
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+	struct macid_ctl_t *macid_ctl = &dvobj->macid_ctl;
+
+	if (macid_ctl->macid_cap & cap)
+		return _TRUE;
+	return _FALSE;
+}
+
 void dump_macid_map(void *sel, struct macid_bmp *map, u8 max_num)
 {
 	RTW_PRINT_SEL(sel, "0x%08x\n", map->m0);
@@ -4092,6 +4111,12 @@ inline void rtw_macid_ctl_init_sleep_reg(struct macid_ctl_t *macid_ctl, u16 reg_
 	macid_ctl->reg_sleep_ctrl = reg_ctrl;
 	macid_ctl->reg_sleep_info = reg_info;
 }
+inline void rtw_macid_ctl_init_drop_reg(struct macid_ctl_t *macid_ctl, u16 reg_ctrl, u16 reg_info)
+{
+	macid_ctl->reg_drop_ctrl = reg_ctrl;
+	macid_ctl->reg_drop_info = reg_info;
+}
+
 #else
 inline void rtw_macid_ctl_init_sleep_reg(struct macid_ctl_t *macid_ctl, u16 m0, u16 m1, u16 m2, u16 m3)
 {
@@ -4104,6 +4129,20 @@ inline void rtw_macid_ctl_init_sleep_reg(struct macid_ctl_t *macid_ctl, u16 m0, 
 #endif
 #if (MACID_NUM_SW_LIMIT > 96)
 	macid_ctl->reg_sleep_m3 = m3;
+#endif
+}
+
+inline void rtw_macid_ctl_init_drop_reg(struct macid_ctl_t *macid_ctl, u16 m0, u16 m1, u16 m2, u16 m3)
+{
+	macid_ctl->reg_drop_m0 = m0;
+#if (MACID_NUM_SW_LIMIT > 32)
+	macid_ctl->reg_drop_m1 = m1;
+#endif
+#if (MACID_NUM_SW_LIMIT > 64)
+	macid_ctl->reg_drop_m2 = m2;
+#endif
+#if (MACID_NUM_SW_LIMIT > 96)
+	macid_ctl->reg_drop_m3 = m3;
 #endif
 }
 #endif
@@ -4762,7 +4801,9 @@ int rtw_dev_nlo_info_set(struct pno_nlo_info *nlo_info, pno_ssid_t *ssid,
 
 	int i = 0;
 	struct file *fp;
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	mm_segment_t fs;
+	#endif
 	loff_t pos = 0;
 	u8 *source = NULL;
 	long len = 0;
@@ -4799,8 +4840,10 @@ int rtw_dev_nlo_info_set(struct pno_nlo_info *nlo_info, pno_ssid_t *ssid,
 		return 0;
 	}
 
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+	#endif
 
 	source = rtw_zmalloc(2048);
 
@@ -4810,7 +4853,9 @@ int rtw_dev_nlo_info_set(struct pno_nlo_info *nlo_info, pno_ssid_t *ssid,
 		rtw_mfree(source, 2048);
 	}
 
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	set_fs(fs);
+	#endif
 	filp_close(fp, NULL);
 
 	RTW_INFO("-%s-\n", __func__);

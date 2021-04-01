@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2007 - 2019 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -879,36 +879,16 @@ void rtw_mi_buddy_xmit_tasklet_schedule(_adapter *padapter)
 
 u8 _rtw_mi_busy_traffic_check(_adapter *padapter, void *data)
 {
-	u32 passtime;
-	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
-	bool check_sc_interval = *(bool *)data;
-
-	if (pmlmepriv->LinkDetectInfo.bBusyTraffic == _TRUE) {
-		if (check_sc_interval) {
-			/* Miracast can't do AP scan*/
-			passtime = rtw_get_passing_time_ms(pmlmepriv->lastscantime);
-			if (passtime > BUSY_TRAFFIC_SCAN_DENY_PERIOD) {
-				RTW_INFO(ADPT_FMT" bBusyTraffic == _TRUE\n", ADPT_ARG(padapter));
-				return _TRUE;
-			}
-		} else
-			return _TRUE;
-	}
-
-	return _FALSE;
+	return padapter->mlmepriv.LinkDetectInfo.bBusyTraffic;
 }
 
-u8 rtw_mi_busy_traffic_check(_adapter *padapter, bool check_sc_interval)
+u8 rtw_mi_busy_traffic_check(_adapter *padapter)
 {
-	bool in_data = check_sc_interval;
-
-	return _rtw_mi_process(padapter, _FALSE, &in_data, _rtw_mi_busy_traffic_check);
+	return _rtw_mi_process(padapter, _FALSE, NULL, _rtw_mi_busy_traffic_check);
 }
-u8 rtw_mi_buddy_busy_traffic_check(_adapter *padapter, bool check_sc_interval)
+u8 rtw_mi_buddy_busy_traffic_check(_adapter *padapter)
 {
-	bool in_data = check_sc_interval;
-
-	return _rtw_mi_process(padapter, _TRUE, &in_data, _rtw_mi_busy_traffic_check);
+	return _rtw_mi_process(padapter, _TRUE, NULL, _rtw_mi_busy_traffic_check);
 }
 static u8 _rtw_mi_check_mlmeinfo_state(_adapter *padapter, void *data)
 {
