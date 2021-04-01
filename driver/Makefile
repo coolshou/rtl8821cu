@@ -841,7 +841,7 @@ endif
 ifeq ($(CONFIG_RTL8821C), y)
 RTL871X := rtl8821c
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8821cu
+MODULE_NAME = rtl8821cu
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
 MODULE_NAME = 8821ce
