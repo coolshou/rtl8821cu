@@ -325,13 +325,15 @@ void rtw_regd_apply_flags(struct wiphy *wiphy)
 	unsigned int i, j;
 	u16 channels[42] = {
 		1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-		36, 40, 44, 48, 52, 56, 60, 64, 
+		36, 40, 44, 48, 52, 56, 60, 64,
 		100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144,
 		149, 153, 157, 161, 165, 169, 173, 177
 	};
 	u16 channel;
 	u32 freq;
 
+	/* all channels disable */
+	/*
 	for (i = 0; i < NUM_NL80211_BANDS; i++) {
 		sband = wiphy->bands[i];
 
@@ -341,9 +343,10 @@ void rtw_regd_apply_flags(struct wiphy *wiphy)
 
 				if (ch)
 					ch->flags = IEEE80211_CHAN_DISABLED;
+					RTW_INFO("%s: %s\n", __func__, ch);
 			}
 	}
-
+	*/
 	for (i = 0; i < 42; i++) {
 		channel = channels[i];
 		freq = rtw_ch2freq(channel);
