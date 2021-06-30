@@ -1,8 +1,8 @@
-rtl8821cu (5.8.1.7-37266.20210401) UNRELEASED; urgency=medium
+rtl8821cu (5.8.1.7-37266.20210630) UNRELEASED; urgency=medium
 
-  * new upstream 5.8.1.7-37266
+  * fix kernel 5.10
 
- -- coolshou <coolshou2060@gmail.com>  Thu, 01 Apr 2021 10:47:16 +0800
+ -- coolshou <coolshou2060@gmail.com>  Wed, 30 Jun 2021 16:29:06 +0800
 
 rtl8821cu (5.8.1.4-36402.20210303) unstable; urgency=medium
 
